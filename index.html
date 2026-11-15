@@ -187,7 +187,7 @@
     <button id="progBack" title="Back one chord (↑)">◀</button>
     <button id="progRestart" title="Back to the first chord">Restart</button>
     <button id="progFwd" title="Skip ahead one chord (↓)">▶</button>
-    <label class="toggle" title="Pressing the next chord's root key plays that exact chord"><input type="checkbox" id="followProg"> Keys follow</label>
+    <label class="toggle" title="Any chord key on the next chord's root plays that exact chord from the progression"><input type="checkbox" id="sloppy"> Sloppy mode</label>
   </div>
   <div id="progStrip"></div>
 </div>
@@ -259,8 +259,9 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
-  bassSplit: 0, bassSound: "piano", bassStyle: "single", followProg: true }; // bassSplit: keys below it play bass (0 = off)
+  bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
+delete S.followProg; // replaced by Sloppy mode (off by default)
 
 function spelling() {
   const parent = mod(S.key + SCALES[S.scale].parent, 12);
@@ -623,9 +624,9 @@ function keyDown(note, vel) {
   if (isBass(note)) return bassDown(note, vel);
   const mode = note < S.split ? S.lowerMode : S.upperMode;
   if (mode === "chords") {
-    // Following a progression: the key for the next chord's root plays that exact chord
+    // Sloppy mode: the key for the next chord's root plays that exact chord from the progression
     const steps = progSteps();
-    if (S.followProg && steps.length) {
+    if (S.sloppy && steps.length) {
       const pcs = [mod(note, 12), mod(snapNearest(note), 12)];
       for (let k = 0; k < Math.min(2, steps.length); k++) {
         const chord = steps[(progPos + k) % steps.length].chord;
@@ -737,7 +738,7 @@ function syncUI() {
   $("bassSound").value = S.bassSound; $("bassStyle").value = S.bassStyle;
   $("bassSound").hidden = $("bassStyle").hidden = !S.bassSplit;
   $("prog").value = S.prog;
-  $("followProg").checked = S.followProg;
+  $("sloppy").checked = S.sloppy;
 }
 function setup() {
   KEYS.forEach((k, i) => $("key").add(new Option(k, i)));
@@ -760,7 +761,7 @@ function setup() {
   $("bassOff").onclick = () => { releaseBass(); S.bassSplit = 0; save(); syncUI(); render(); };
   bind("bassSound", t => { releaseBass(); S.bassSound = t.value; });
   bind("bassStyle", t => S.bassStyle = t.value);
-  bind("followProg", t => S.followProg = t.checked);
+  bind("sloppy", t => S.sloppy = t.checked);
   $("panic").onclick = panic;
   addEventListener("keydown", e => {
     if (e.key === "Escape") return panic();
@@ -867,7 +868,7 @@ function buildKeyboard() {
 
 // ---------- Set list ----------
 const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog",
-  "bassSplit", "bassSound", "bassStyle", "followProg"];
+  "bassSplit", "bassSound", "bassStyle", "sloppy"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];
 function loadSong(i) {
