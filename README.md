@@ -3,7 +3,7 @@
 A live-performance chord helper for the AKAI MPK mini Plus II (works with any MIDI keyboard). One web page, no install.
 
 - Pick a key and scale; wrong notes are corrected to the nearest note in the key.
-- Optional bass keys on the far left: one deep note per key, kept in key, sent on MIDI channel 2.
+- Optional bass keys on the far left for the piano left hand (single notes, octaves or root + 5th), kept in key. A bass-guitar sound on MIDI channel 2 is also available.
 - Keys below the split play one-finger chords; keys above play melody.
 - Pads 1–7 play the chords of the key. With a progression loaded, pad 8 plays the next chord.
 - Type a progression per song (`Imaj7 vi7 ii7 V7`, `G D Em C`, `[Chorus] IV I V vi`) and the screen follows along as you play.
