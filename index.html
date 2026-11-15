@@ -145,9 +145,9 @@
   <div class="ctl"><label>Scale</label><select id="scale"></select></div>
   <div class="ctl"><label>Sound</label><select id="sound"></select></div>
   <div class="ctl"><label>Lower keys</label><select id="lowerMode">
-    <option value="chords">Play chords</option><option value="melody">Melody (in key)</option><option value="free">Free</option></select></div>
+    <option value="chords">Play chords</option><option value="melody">Melody (in key)</option><option value="free">Free</option><option value="lock">Chord lock (right key only)</option></select></div>
   <div class="ctl"><label>Upper keys</label><select id="upperMode">
-    <option value="melody">Melody (in key)</option><option value="chords">Play chords</option><option value="free">Free</option></select></div>
+    <option value="melody">Melody (in key)</option><option value="chords">Play chords</option><option value="free">Free</option><option value="lock">Chord lock (right key only)</option></select></div>
   <div class="ctl"><label>Bass keys</label><span class="pair"><button id="bassSplit">Off</button><button id="bassOff" title="Turn bass keys off">✕</button>
     <select id="bassSound"><option value="piano">Left hand (piano)</option><option value="guitar">Bass guitar (ch 2)</option></select>
     <select id="bassStyle"><option value="single">Single notes</option><option value="octave">Octaves</option><option value="fifth">Root + 5th</option></select></span></div>
@@ -620,9 +620,23 @@ function bassUp(note) {
 const bassNotes = () => [...new Set([...bassHeld.values()].flat()
   .concat(...[...held].filter(([id]) => id[0] === "b").map(([, h]) => h.notes)))].sort((a, b) => a - b);
 
+// Chord lock: every key in the zone is silent except the next chord's root, which plays that whole chord.
+// Keys landing right after it are the same hand, so they can't jump ahead.
+let lockAt = -1e9;
+function lockDown(note, vel) {
+  const steps = progSteps(), now = performance.now();
+  const chord = steps.length ? steps[progPos % steps.length].chord : null;
+  if (!chord || now - lockAt < 150 || ![mod(note, 12), mod(snapNearest(note), 12)].includes(chord.rootPc))
+    return press("k" + note, [], vel, null);
+  lockAt = now;
+  progPos = (progPos + 1) % steps.length;
+  press("k" + note, voice(chord, note), vel, chord, chord.degree, true);
+}
+
 function keyDown(note, vel) {
   if (isBass(note)) return bassDown(note, vel);
   const mode = note < S.split ? S.lowerMode : S.upperMode;
+  if (mode === "lock") return lockDown(note, vel);
   if (mode === "chords") {
     // Sloppy mode: the key for the next chord's root plays that exact chord from the progression
     const steps = progSteps();
@@ -835,7 +849,7 @@ function render() {
     (bassNotes().length ? `<br>${S.bassSound === "piano" ? "Left hand" : "Bass"}: ${bassNotes().map(noteName).join(" ")}` : "");
 
   // Keyboard highlights
-  const zone = n => !isBass(n) && (n < S.split ? S.lowerMode : S.upperMode) === "chords";
+  const zone = n => !isBass(n) && ["chords", "lock"].includes(n < S.split ? S.lowerMode : S.upperMode);
   document.querySelectorAll("#kb [data-n]").forEach(el => {
     const n = +el.dataset.n;
     el.classList.toggle("out", !inScale(n));
