@@ -15,3 +15,7 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 Open `index.html` in Chrome (Safari has no Web MIDI) and allow MIDI access. Click once to start sound. **Esc** stops all notes.
 
 Set lists live in Chrome's local storage. Use **Export backup** to keep a copy.
+
+## Guide
+
+A color-coded quick guide with an annotated screenshot: open **Guide** next to the logo, or `docs/guide.html`. A printable copy is in `docs/Chord Stage Guide.pdf`.
