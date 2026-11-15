@@ -187,6 +187,7 @@
     <button id="progBack" title="Back one chord (↑)">◀</button>
     <button id="progRestart" title="Back to the first chord">Restart</button>
     <button id="progFwd" title="Skip ahead one chord (↓)">▶</button>
+    <label class="toggle" title="Pressing the next chord's root key plays that exact chord"><input type="checkbox" id="followProg"> Keys follow</label>
   </div>
   <div id="progStrip"></div>
 </div>
@@ -249,6 +250,8 @@ const QUALITY = [
 const DETECT = QUALITY.concat([
   { iv:[2,7], sym:"sus2" }, { iv:[5,7], sym:"sus4" }, { iv:[4,7,9], sym:"6" }, { iv:[3,7,9], sym:"m6" },
   { iv:[7], sym:"5" }, { iv:[4,10], sym:"7" }, { iv:[3,10], sym:"m7" }, { iv:[4,11], sym:"maj7" },
+  { iv:[4,7,10,14], sym:"9" }, { iv:[3,7,10,14], sym:"m9" }, { iv:[4,7,11,14], sym:"maj9" }, { iv:[4,7,14], sym:"add9" },
+  { iv:[2,4,7,10], sym:"9" }, { iv:[2,3,7,10], sym:"m9" }, { iv:[2,4,7,11], sym:"maj9" }, { iv:[2,4,7], sym:"add9" },
 ]);
 
 const mod = (n, m) => ((n % m) + m) % m;
@@ -256,7 +259,7 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
-  bassSplit: 0, bassSound: "piano", bassStyle: "single" }; // bassSplit: keys below it play bass (0 = off)
+  bassSplit: 0, bassSound: "piano", bassStyle: "single", followProg: true }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 
 function spelling() {
@@ -310,11 +313,12 @@ function voice(chord, near) {
 }
 
 // ---------- Progressions ----------
-const NUM_RE = /^([b#]?)(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(°|o|dim|ø|\+|aug)?(maj7|M7|7)?$/;
+const NUM_RE = /^([b#]?)(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(°|o|dim|ø|\+|aug)?(maj9|maj7|M7|7\(9\)|9|7)?$/;
 const NAME_RE = /^([A-G])([#b]?)([^/]*)(?:\/([A-G][#b]?))?$/;
 const LETTER = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const ALIAS = { M: "", maj: "", min: "m", "-": "m", "°": "dim", o: "dim", "+": "aug", M7: "maj7", "Δ": "maj7",
-  "ø": "m7b5", "-7": "m7", min7: "m7", "°7": "dim7", o7: "dim7", sus: "sus4" };
+  "ø": "m7b5", "-7": "m7", min7: "m7", "°7": "dim7", o7: "dim7", sus: "sus4",
+  "7(9)": "9", "m7(9)": "m9", "maj7(9)": "maj9", "(9)": "add9", M9: "maj9" };
 const pcOf = s => mod(LETTER[s[0]] + (s[1] === "#" ? 1 : s[1] === "b" ? -1 : 0), 12);
 
 function numeral(rootPc, iv) {
@@ -324,7 +328,8 @@ function numeral(rootPc, iv) {
   const n = iv[0] === 3 ? ROMAN[d].toLowerCase() : ROMAN[d];
   const k = iv.join(",");
   const suf = { "3,6": "°", "3,6,9": "°7", "3,6,10": "ø7", "4,8": "+", "4,7,10": "7", "3,7,10": "7",
-    "4,7,11": "maj7", "3,7,11": "maj7", "2,7": "sus2", "5,7": "sus4" }[k] || "";
+    "4,7,11": "maj7", "3,7,11": "maj7", "2,7": "sus2", "5,7": "sus4",
+    "4,7,10,14": "9", "3,7,10,14": "9", "4,7,11,14": "maj9", "3,7,11,14": "maj9", "4,7,14": "add9" }[k] || "";
   return acc + n + suf;
 }
 // A chord from a root and intervals; `degree` is its place in the key, or -1 if outside it
@@ -350,6 +355,8 @@ function parseChord(tok) {
     else if (qual === "ø") iv = [3,6,10];
     else if (/\+|aug/.test(qual)) iv = [4,8];
     else if (sev === "7") iv = lower ? [3,7,10] : [4,7,10];
+    else if (sev === "9" || sev === "7(9)") iv = lower ? [3,7,10,14] : [4,7,10,14];
+    else if (sev === "maj9") iv = lower ? [3,7,11,14] : [4,7,11,14];
     else if (sev) iv = lower ? [3,7,11] : [4,7,11];
     const dia = chords[d];
     // A plain diatonic numeral follows the 7th-chords setting
@@ -616,6 +623,17 @@ function keyDown(note, vel) {
   if (isBass(note)) return bassDown(note, vel);
   const mode = note < S.split ? S.lowerMode : S.upperMode;
   if (mode === "chords") {
+    // Following a progression: the key for the next chord's root plays that exact chord
+    const steps = progSteps();
+    if (S.followProg && steps.length) {
+      const pcs = [mod(note, 12), mod(snapNearest(note), 12)];
+      for (let k = 0; k < Math.min(2, steps.length); k++) {
+        const chord = steps[(progPos + k) % steps.length].chord;
+        if (!pcs.includes(chord.rootPc)) continue;
+        progPos = (progPos + k + 1) % steps.length;
+        return press("k" + note, voice(chord, note), vel, chord, chord.degree, true);
+      }
+    }
     const chord = keyChords()[degreeOf(note)];
     press("k" + note, voice(chord, snapNearest(note)), vel, chord, chord.degree);
   } else {
@@ -719,6 +737,7 @@ function syncUI() {
   $("bassSound").value = S.bassSound; $("bassStyle").value = S.bassStyle;
   $("bassSound").hidden = $("bassStyle").hidden = !S.bassSplit;
   $("prog").value = S.prog;
+  $("followProg").checked = S.followProg;
 }
 function setup() {
   KEYS.forEach((k, i) => $("key").add(new Option(k, i)));
@@ -741,6 +760,7 @@ function setup() {
   $("bassOff").onclick = () => { releaseBass(); S.bassSplit = 0; save(); syncUI(); render(); };
   bind("bassSound", t => { releaseBass(); S.bassSound = t.value; });
   bind("bassStyle", t => S.bassStyle = t.value);
+  bind("followProg", t => S.followProg = t.checked);
   $("panic").onclick = panic;
   addEventListener("keydown", e => {
     if (e.key === "Escape") return panic();
@@ -847,7 +867,7 @@ function buildKeyboard() {
 
 // ---------- Set list ----------
 const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog",
-  "bassSplit", "bassSound", "bassStyle"];
+  "bassSplit", "bassSound", "bassStyle", "followProg"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];
 function loadSong(i) {
