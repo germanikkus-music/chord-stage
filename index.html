@@ -63,6 +63,9 @@
   .bk.out { background: #11131a; }
   .wk.zone { box-shadow: inset 0 -6px 0 rgba(124,196,255,.55); }
   .bk.zone { box-shadow: inset 0 -5px 0 rgba(124,196,255,.55); }
+  .wk.bass { box-shadow: inset 0 -6px 0 rgba(242,193,78,.8); }
+  .bk.bass { box-shadow: inset 0 -5px 0 rgba(242,193,78,.8); }
+  .pair { display: flex; gap: 4px; }
   .wk .dot, .bk .dot { position: absolute; left: 50%; bottom: 10px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; }
   .wk.press, .bk.press { background: var(--accent) !important; }
   .wk.sound .dot, .bk.sound .dot { background: var(--dom); }
@@ -131,6 +134,7 @@
     <option value="chords">Play chords</option><option value="melody">Melody (in key)</option><option value="free">Free</option></select></div>
   <div class="ctl"><label>Upper keys</label><select id="upperMode">
     <option value="melody">Melody (in key)</option><option value="chords">Play chords</option><option value="free">Free</option></select></div>
+  <div class="ctl"><label>Bass keys</label><span class="pair"><button id="bassSplit">Off</button><button id="bassOff" title="Turn bass keys off">✕</button></span></div>
   <div class="ctl"><label>Split at</label><button id="split">C4</button></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="bass" checked> Bass note</label></div>
@@ -185,7 +189,7 @@
 </div>
 
 <div class="kbwrap">
-  <div class="kbhead"><span>Blue underline = chord keys · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
+  <div class="kbhead"><span>Gold underline = bass keys · blue underline = chord keys · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
   <div id="kb"></div>
 </div>
 
@@ -235,7 +239,8 @@ const mod = (n, m) => ((n % m) + m) % m;
 const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
-  split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "" };
+  split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
+  bassSplit: 0 }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 
 function spelling() {
@@ -419,7 +424,7 @@ function synthOff(note) {
 }
 function synthKill(note) { const v = voices.get(note); if (v) { voices.delete(note); v.stop(0.02); } }
 
-function makeVoice(note, vel) {
+function makeVoice(note, vel, kind = S.sound) {
   const t = ctx.currentTime, f = hz(note), g = ctx.createGain(), amp = 0.25 + 0.75 * (vel / 127);
   g.gain.value = 0; g.connect(master);
   const nodes = [];
@@ -428,8 +433,13 @@ function makeVoice(note, vel) {
     const og = ctx.createGain(); og.gain.value = gain; o.connect(og); nodes.push(o); o.start(t); return { o, og };
   };
   let rel = 0.35 + mix.release * 1.2, env;
-  const kind = S.sound;
-  if (kind === "epiano" || kind === "piano") {
+  if (kind === "bass") {
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 2; lp.connect(g);
+    osc("sawtooth", f, 0.45).og.connect(lp);
+    osc("sine", f, 0.9).og.connect(g);
+    lp.frequency.setValueAtTime(f * 8, t); lp.frequency.exponentialRampToValueAtTime(f * 2, t + 0.3);
+    env = [[0.004, 1], [0.8, 0.7]]; rel = 0.08 + mix.release * 0.3;
+  } else if (kind === "epiano" || kind === "piano") {
     const c = osc("sine", f, 1), m = osc("sine", f * (kind === "epiano" ? 1 : 2), 0);
     m.og.gain.setValueAtTime(f * (kind === "epiano" ? 2.2 : 1.2) * amp, t);
     m.og.gain.exponentialRampToValueAtTime(f * 0.08 + 1, t + (kind === "epiano" ? 1.2 : 0.6));
@@ -540,6 +550,7 @@ function release(id) {
 }
 function panic() {
   held.clear(); sustained.clear(); sustain = false; freeMatch = "";
+  bassHeld.clear(); bassVoices.forEach(v => v.stop(0.02)); bassVoices.clear();
   for (const n of sounding.keys()) if (midiOut) midiOut.send([0x80, n, 0]);
   sounding.clear();
   [...voices.keys()].forEach(synthKill);
@@ -547,7 +558,32 @@ function panic() {
   render();
 }
 
+// ---------- Bass keys ----------
+// One deep note per key, kept in key, sent on MIDI channel 2 so MPC can give it its own track
+const bassHeld = new Map();   // key pressed -> bass note played
+const bassVoices = new Map(); // bass note -> voice
+const isBass = n => S.bassSplit > 0 && n < S.bassSplit;
+// Move the whole bass zone down by octaves until its top key is no higher than E3
+function bassShift() { let s = 0; while (S.bassSplit - 1 - s > 52) s += 12; return s; }
+function bassDown(note, vel) {
+  bassUp(note);
+  const n = snapNearest(note) - bassShift();
+  bassHeld.set(note, n);
+  if (ctx && S.internal) { const old = bassVoices.get(n); if (old) old.stop(0.02); bassVoices.set(n, makeVoice(n, vel, "bass")); }
+  if (midiOut) midiOut.send([0x91, n, vel]);
+  render();
+}
+function bassUp(note) {
+  const n = bassHeld.get(note); if (n == null) return;
+  bassHeld.delete(note);
+  if ([...bassHeld.values()].includes(n)) return; // another key still holds this note
+  const v = bassVoices.get(n); if (v) { bassVoices.delete(n); v.stop(); }
+  if (midiOut) midiOut.send([0x81, n, 0]);
+  render();
+}
+
 function keyDown(note, vel) {
+  if (isBass(note)) return bassDown(note, vel);
   const mode = note < S.split ? S.lowerMode : S.upperMode;
   if (mode === "chords") {
     const chord = keyChords()[degreeOf(note)];
@@ -606,8 +642,9 @@ function onMidi(e) {
   if (recent.size > 200) recent.clear();
 
   if (learnSplit && type === 0x90 && d2 > 0) { S.split = d1; learnSplit = false; save(); syncUI(); render(); return; }
+  if (learnBass && type === 0x90 && d2 > 0 && ch !== 10) { S.bassSplit = d1 + 1; learnBass = false; save(); syncUI(); render(); return; }
   if (type === 0x90 && d2 > 0) { seen(d1, ch); ch === 10 ? padDown(d1 - 36, d2) : keyDown(d1, d2); }
-  else if (type === 0x80 || type === 0x90) { ch === 10 ? release("p" + (d1 - 36)) : release("k" + d1); }
+  else if (type === 0x80 || type === 0x90) { ch === 10 ? release("p" + (d1 - 36)) : bassHeld.has(d1) ? bassUp(d1) : release("k" + d1); }
   else if (type === 0xB0) {
     if (d1 === 64) { d2 >= 64 ? (sustain = true) : releasePedal(); }
     else if (d1 >= 24 && d1 <= 31) knob(d1, d2);
@@ -641,12 +678,14 @@ async function initMidi() {
 
 // ---------- UI ----------
 const $ = id => document.getElementById(id);
-let learnSplit = false;
+let learnSplit = false, learnBass = false;
 function syncUI() {
   $("key").value = S.key; $("scale").value = S.scale; $("sound").value = S.sound;
   $("lowerMode").value = S.lowerMode; $("upperMode").value = S.upperMode;
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
   $("split").textContent = learnSplit ? "Press a key…" : noteName(S.split);
+  $("bassSplit").textContent = learnBass ? "Press top bass key…" : S.bassSplit ? "Up to " + noteName(S.bassSplit - 1) : "Off";
+  $("bassOff").hidden = !S.bassSplit || learnBass;
   $("prog").value = S.prog;
 }
 function setup() {
@@ -661,9 +700,12 @@ function setup() {
   bind("upperMode", t => S.upperMode = t.value);
   bind("sevenths", t => S.sevenths = t.checked);
   bind("bass", t => S.bass = t.checked);
-  bind("internal", t => { S.internal = t.checked; if (!t.checked) [...voices.keys()].forEach(synthKill); });
+  bind("internal", t => { S.internal = t.checked;
+    if (!t.checked) { [...voices.keys()].forEach(synthKill); bassVoices.forEach(v => v.stop(0.02)); bassVoices.clear(); } });
   bind("out", t => { panic(); S.out = t.value; midiOut = t.value && access ? access.outputs.get(t.value) : null; });
-  $("split").onclick = () => { learnSplit = !learnSplit; syncUI(); };
+  $("split").onclick = () => { learnSplit = !learnSplit; learnBass = false; syncUI(); };
+  $("bassSplit").onclick = () => { learnBass = !learnBass; learnSplit = false; syncUI(); };
+  $("bassOff").onclick = () => { [...bassHeld.keys()].forEach(bassUp); S.bassSplit = 0; save(); syncUI(); render(); };
   $("panic").onclick = panic;
   addEventListener("keydown", e => {
     if (e.key === "Escape") return panic();
@@ -733,15 +775,17 @@ function render() {
   $("nowName").style.opacity = notes.length ? 1 : 0.35;
   $("nowHint").innerHTML = `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
     (want ? `Up next: <b>${want.chord.name}</b>${after ? "then " + after.chord.name : ""}`
-      : next.length ? "Try next: " + next.map(d => chords[d].name).join(" · ") : "Play a chord to see what fits next");
+      : next.length ? "Try next: " + next.map(d => chords[d].name).join(" · ") : "Play a chord to see what fits next") +
+    (bassHeld.size ? `<br>Bass: ${[...new Set(bassHeld.values())].map(noteName).join(" ")}` : "");
 
   // Keyboard highlights
-  const zone = n => (n < S.split ? S.lowerMode : S.upperMode) === "chords";
+  const zone = n => !isBass(n) && (n < S.split ? S.lowerMode : S.upperMode) === "chords";
   document.querySelectorAll("#kb [data-n]").forEach(el => {
     const n = +el.dataset.n;
     el.classList.toggle("out", !inScale(n));
     el.classList.toggle("zone", zone(n));
-    el.classList.toggle("press", held.has("k" + n));
+    el.classList.toggle("bass", isBass(n));
+    el.classList.toggle("press", held.has("k" + n) || bassHeld.has(n));
     el.classList.toggle("sound", sounding.has(n));
   });
   renderKnobs();
@@ -767,7 +811,7 @@ function buildKeyboard() {
 }
 
 // ---------- Set list ----------
-const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog"];
+const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog", "bassSplit"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];
 function loadSong(i) {
