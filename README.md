@@ -7,6 +7,7 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - Keys below the split play one-finger chords; keys above play melody.
 - Pads 1–7 play the chords of the key. With a progression loaded, pad 8 plays the next chord.
 - Type a progression per song (`Imaj7 vi7 ii7 V7`, `G D Em C`, `[Chorus] IV I V vi`) and the screen follows along as you play.
+- Import MPC `.progression` files (Edit set list → **+ MPC progressions**, or drop them on the page). Each becomes a song with its key and chord chart filled in, and Chord lock, Sloppy mode and pad 8 play the file's exact voicings.
 - Set list with per-song settings; switch with ◀ ▶, arrow keys, Page Up/Down (foot pedal) or knob 8.
 - Built-in sounds, or send MIDI to MPC 3 (via the IAC Driver) or the MPK's 5-pin MIDI out.
 

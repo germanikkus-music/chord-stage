@@ -174,8 +174,10 @@
   <div class="listfoot">
     <span>Switch songs: ◀ ▶ buttons · arrow keys · Page Up/Down (foot pedal) · knob 8</span>
     <span class="spacer"></span>
+    <button id="addMpc" title="Turn MPC .progression files into songs (you can pick many at once, or drop them on the page)">+ MPC progressions</button>
     <button id="export">Export backup</button><button id="import">Import</button>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <input type="file" id="mpcFile" accept=".progression" multiple hidden>
   </div>
 </div>
 
@@ -252,6 +254,7 @@ const DETECT = QUALITY.concat([
   { iv:[7], sym:"5" }, { iv:[4,10], sym:"7" }, { iv:[3,10], sym:"m7" }, { iv:[4,11], sym:"maj7" },
   { iv:[4,7,10,14], sym:"9" }, { iv:[3,7,10,14], sym:"m9" }, { iv:[4,7,11,14], sym:"maj9" }, { iv:[4,7,14], sym:"add9" },
   { iv:[2,4,7,10], sym:"9" }, { iv:[2,3,7,10], sym:"m9" }, { iv:[2,4,7,11], sym:"maj9" }, { iv:[2,4,7], sym:"add9" },
+  { iv:[4,8,10], sym:"aug7" }, { iv:[3,7,14], sym:"madd9" }, { iv:[2,3,7], sym:"madd9" },
 ]);
 
 const mod = (n, m) => ((n % m) + m) % m;
@@ -304,6 +307,7 @@ function degreeOf(n) {
 }
 // MIDI notes for a chord, root placed at or just below `near`
 function voice(chord, near) {
+  if (chord.voicing) return chord.voicing.slice(); // the exact notes from an MPC progression
   let root = near - mod(near - chord.rootPc, 12);
   if (root < 40) root += 12;
   const notes = chord.tones.map(t => root + t);
@@ -319,7 +323,8 @@ const NAME_RE = /^([A-G])([#b]?)([^/]*)(?:\/([A-G][#b]?))?$/;
 const LETTER = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const ALIAS = { M: "", maj: "", min: "m", "-": "m", "°": "dim", o: "dim", "+": "aug", M7: "maj7", "Δ": "maj7",
   "ø": "m7b5", "-7": "m7", min7: "m7", "°7": "dim7", o7: "dim7", sus: "sus4",
-  "7(9)": "9", "m7(9)": "m9", "maj7(9)": "maj9", "(9)": "add9", M9: "maj9" };
+  "7(9)": "9", "m7(9)": "m9", "maj7(9)": "maj9", "(9)": "add9", M9: "maj9",
+  "7#5": "aug7", "+7": "aug7", "m(add9)": "madd9", madd: "madd9", "add2": "add9" };
 const pcOf = s => mod(LETTER[s[0]] + (s[1] === "#" ? 1 : s[1] === "b" ? -1 : 0), 12);
 
 function numeral(rootPc, iv) {
@@ -330,7 +335,8 @@ function numeral(rootPc, iv) {
   const k = iv.join(",");
   const suf = { "3,6": "°", "3,6,9": "°7", "3,6,10": "ø7", "4,8": "+", "4,7,10": "7", "3,7,10": "7",
     "4,7,11": "maj7", "3,7,11": "maj7", "2,7": "sus2", "5,7": "sus4",
-    "4,7,10,14": "9", "3,7,10,14": "9", "4,7,11,14": "maj9", "3,7,11,14": "maj9", "4,7,14": "add9" }[k] || "";
+    "4,7,10,14": "9", "3,7,10,14": "9", "4,7,11,14": "maj9", "3,7,11,14": "maj9", "4,7,14": "add9",
+    "4,8,10": "+7", "3,7,14": "add9", "4,7,9": "6", "3,7,9": "6" }[k] || "";
   return acc + n + suf;
 }
 // A chord from a root and intervals; `degree` is its place in the key, or -1 if outside it
@@ -344,7 +350,15 @@ function buildChord(rootPc, iv, bassPc = null, rootName = pcName(rootPc), bassNa
 }
 const inChordScale = n => SCALES[S.scale].chord.includes(mod(n - S.key, 12));
 
+// A chord token may carry an exact voicing from an MPC progression: "Cmin9@48.58.62.63.67"
 function parseChord(tok) {
+  let voicing = null;
+  tok = tok.replace(/♯/g, "#").replace(/♭/g, "b").replace(/@([\d.]+)$/, (_, v) => {
+    voicing = v.split(".").filter(Boolean).map(Number).filter(n => n >= 0 && n < 128).sort((a, b) => a - b); return ""; });
+  const c = parseChordName(tok);
+  return c && voicing && voicing.length ? { ...c, voicing } : c;
+}
+function parseChordName(tok) {
   const chords = keyChords();
   let m = tok.match(NUM_RE);
   if (m) {
@@ -367,7 +381,8 @@ function parseChord(tok) {
   }
   m = tok.match(NAME_RE);
   if (m) {
-    const suf = m[3] in ALIAS ? ALIAS[m[3]] : m[3];
+    let suf = m[3].replace(/^min(?!or)/, "m"); // MPC spells them Cmin9, Cminadd
+    suf = suf in ALIAS ? ALIAS[suf] : m[3] in ALIAS ? ALIAS[m[3]] : suf;
     const q = suf === "" ? QUALITY[0] : DETECT.find(q => q.sym === suf);
     if (!q) return null;
     return buildChord(pcOf(m[1] + m[2]), q.iv, m[4] ? pcOf(m[4]) : null, m[1] + m[2], m[4] || "");
@@ -799,6 +814,12 @@ function setup() {
   $("export").onclick = exportList;
   $("import").onclick = () => $("importFile").click();
   $("importFile").onchange = e => { if (e.target.files[0]) importList(e.target.files[0]); e.target.value = ""; };
+  $("addMpc").onclick = () => $("mpcFile").click();
+  $("mpcFile").onchange = e => { importProgressions([...e.target.files]); e.target.value = ""; };
+  addEventListener("dragover", e => e.preventDefault());
+  addEventListener("drop", e => { e.preventDefault();
+    const files = [...e.dataTransfer.files].filter(f => /\.progression$/i.test(f.name));
+    if (files.length) importProgressions(files); });
   $("songList").onclick = e => {
     const b = e.target.closest("button"), row = e.target.closest(".row"); if (!b || !row) return;
     const i = +row.dataset.i;
@@ -934,6 +955,40 @@ async function importList(file) {
     if (S.setlist.length && !confirm(`Replace your ${S.setlist.length} song(s) with ${list.length} from the file?`)) return;
     S.setlist = list; S.song = -1; save(); stepSong(0);
   } catch { alert("That file isn't a Chord Stage set list."); }
+}
+// MPC .progression files (JSON: rootNote, scale, chords[{ name, notes }]) -> one song each
+const MPC_SCALES = { major: "major", minor: "minor", "natural minor": "minor", "harmonic minor": "harmonic",
+  dorian: "dorian", mixolydian: "mixolydian", "major pentatonic": "majpent", "minor pentatonic": "minpent", blues: "blues" };
+function progressionSong(json, fileName) {
+  const p = json && json.progression;
+  if (!p || !Array.isArray(p.chords) || !p.chords.length) throw 0;
+  const root = String(p.rootNote || "C").replace(/♯/g, "#").replace(/♭/g, "b");
+  const key = /^[A-G][#b]?$/.test(root) ? pcOf(root) : 0;
+  const chordPcs = p.chords.flatMap(c => (c.notes || []).map(n => mod(n, 12)));
+  // "Chromatic" (no scale set): pick major or minor, whichever more of the chord notes fit
+  const fit = sc => chordPcs.filter(pc => SCALES[sc].notes.includes(mod(pc - key, 12))).length;
+  const scale = MPC_SCALES[String(p.scale || "").toLowerCase()] || (fit("minor") > fit("major") ? "minor" : "major");
+  const toks = p.chords.map(c => {
+    const name = String(c.name || "").replace(/\s+/g, "").replace(/♯/g, "#").replace(/♭/g, "b");
+    const notes = (c.notes || []).filter(n => Number.isInteger(n) && n >= 0 && n < 128).sort((a, b) => a - b);
+    return (name || nameNotes(notes).name.replace(/\s+/g, "")) + (notes.length ? "@" + notes.join(".") : "");
+  });
+  const prog = toks.map((t, i) => (i && i % 4 === 0 ? "| " : "") + t).join(" ");
+  const sevenths = p.chords.filter(c => /[679]/.test(c.name || "")).length > p.chords.length / 2;
+  const name = String(p.name || fileName.replace(/\.progression$/i, "")).split(" - ").pop().replace(/_/g, " ").trim();
+  return { name, ...songOf(), key, scale, sevenths, prog };
+}
+async function importProgressions(files) {
+  const added = [], failed = [];
+  for (const f of files) {
+    try {
+      const song = progressionSong(JSON.parse(await f.text()), f.name);
+      if (!S.setlist.some(s => s.name === song.name && s.prog === song.prog)) added.push(song);
+    } catch { failed.push(f.name); }
+  }
+  if (added.length) { const at = S.setlist.length; S.setlist.push(...added); loadSong(at); $("listPanel").hidden = false; }
+  alert((added.length ? `Added ${added.length} song${added.length > 1 ? "s" : ""} to the end of your set list.` : "No new songs added (they're already in your set list).") +
+    (failed.length ? `\n\nCouldn't read: ${failed.join(", ")}` : ""));
 }
 const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const summary = s => `${KEYS[s.key]} ${SCALES[s.scale] ? SCALES[s.scale].name : s.scale}${s.sevenths ? " · 7ths" : ""}`;
