@@ -95,6 +95,19 @@
   .songnow span { font-size: 12px; color: var(--dim); }
   .songnow b { font-size: 24px; }
   .hot { background: #3a3110; border-color: var(--pre); color: var(--pre); }
+  .beatbar { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin-top: 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  #beatGo { font-size: 18px; font-weight: 800; padding: 8px 18px; min-width: 130px; }
+  #beatGo.on { background: #12392c; border-color: var(--tonic); color: var(--tonic); }
+  #beatGo.armed { background: #3a3110; border-color: var(--pre); color: var(--pre); }
+  .beatbar input[type=number] { width: 70px; font: inherit; color: var(--text); background: var(--panel2);
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .beatbar input[type=range] { width: 110px; accent-color: var(--accent); }
+  #beatDots { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; }
+  #beatDots i { width: 16px; height: 16px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--line); }
+  #beatDots i.on { background: var(--tonic); box-shadow: 0 0 10px var(--tonic); }
+  #beatDots i.on.one { background: var(--hot); box-shadow: 0 0 12px var(--hot); }
+  #beatDots span { color: var(--dim); font-size: 13px; min-width: 120px; }
   #listPanel { margin-top: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; }
   #listPanel[hidden], button[hidden] { display: none; }
   .row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
@@ -185,6 +198,17 @@
   </div>
 </div>
 
+<div class="beatbar">
+  <button id="beatGo" title="Start / stop the beat (Space)">▶ Beat</button>
+  <div class="ctl"><label>Beat style</label><select id="beatStyle"></select></div>
+  <div class="ctl"><label>Tempo (BPM)</label><span class="pair"><input id="bpm" type="number" min="40" max="220" step="1"><button id="tap" title="Tap 4 times in time">Tap</button></span></div>
+  <div class="ctl"><label>Drums level</label><input id="beatLevel" type="range" min="0" max="1" step="0.01"></div>
+  <div class="ctl"><label>&nbsp;</label><label class="toggle" title="Press ▶ Beat once to arm it; the beat comes in on the first chord you play"><input type="checkbox" id="beatAuto"> Start on first chord</label></div>
+  <div class="ctl"><label>&nbsp;</label><label class="toggle" title="A drum fill at the end of every 4th bar"><input type="checkbox" id="beatFills"> Fills every 4 bars</label></div>
+  <div class="ctl"><label>&nbsp;</label><label class="toggle" title="Send the beat to 'Send MIDI to' on channel 10 (General MIDI drum notes) so an MPC drum program plays it instead of the built-in drums"><input type="checkbox" id="beatMidi"> Drums to MPC (ch 10)</label></div>
+  <div id="beatDots"><i></i><i></i><i></i><i></i><span id="beatInfo"></span></div>
+</div>
+
 <div class="progbox">
   <div class="progin">
     <label for="prog">Progression</label>
@@ -266,7 +290,8 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
-  bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false }; // bassSplit: keys below it play bass (0 = off)
+  bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
+  beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 delete S.followProg; // replaced by Sloppy mode (off by default)
 // Songs imported from MPC before 2026-11-16 got Sloppy mode off; their chords are mostly outside the key, so turn it on once
@@ -421,7 +446,7 @@ function nameNotes(notes) {
 }
 
 // ---------- Sound ----------
-let ctx, master, tone, wet;
+let ctx, master, tone, wet, comp;
 const SOUNDS = {
   epiano:  { name: "Electric piano" }, piano: { name: "Soft piano" }, pad: { name: "Warm pad" },
   organ:   { name: "Organ" }, strings: { name: "Strings" }, synth: { name: "Synth keys" },
@@ -432,7 +457,7 @@ function initAudio() {
   ctx = new AudioContext({ latencyHint: "interactive" });
   master = ctx.createGain();
   tone = ctx.createBiquadFilter(); tone.type = "lowpass"; tone.Q.value = 0.5;
-  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
   const verb = ctx.createConvolver(); verb.buffer = impulse(2.6);
   wet = ctx.createGain();
   master.connect(tone); tone.connect(comp); tone.connect(verb); verb.connect(wet); wet.connect(comp);
@@ -558,6 +583,7 @@ function press(id, notes, vel, chord, tile, fromProgPad) {
   release(id);
   held.set(id, { notes, chord, tile });
   notes.forEach(n => outOn(n, vel));
+  if (chord && notes.length && beat.armed) beatStart();
   if (chord && chord.degree >= 0) lastChord = chord.degree;
   if (chord && !fromProgPad) progressHit(chord);
   render();
@@ -594,6 +620,7 @@ function release(id) {
   render();
 }
 function panic() {
+  beatStop();
   held.clear(); sustained.clear(); sustain = false; freeMatch = "";
   bassHeld.clear(); bassVoices.forEach(v => v.stop(0.02)); bassVoices.clear();
   for (const n of sounding.keys()) if (midiOut) midiOut.send([0x80, n, 0]);
@@ -718,6 +745,8 @@ function setKey(k) { S.key = k; syncUI(); save(); render(); }
 const recent = new Map();
 function onMidi(e) {
   const [st, d1 = 0, d2 = 0] = e.data, type = st & 0xF0, ch = (st & 0x0F) + 1;
+  if (st === 0xFA || st === 0xFB) return beatStart();
+  if (st === 0xFC) return beatStop();
   if (st >= 0xF0) return;
   // The MPK sends some events on two ports at once; drop the copy
   const sig = st + ":" + d1 + ":" + d2, now = performance.now(), prev = recent.get(sig);
@@ -774,11 +803,14 @@ function syncUI() {
   $("bassSound").hidden = $("bassStyle").hidden = !S.bassSplit;
   $("prog").value = S.prog;
   $("sloppy").checked = S.sloppy;
+  $("beatStyle").value = S.beatStyle; $("bpm").value = S.bpm; $("beatLevel").value = S.beatLevel;
+  $("beatAuto").checked = S.beatAuto; $("beatFills").checked = S.beatFills; $("beatMidi").checked = S.beatMidi;
 }
 function setup() {
   KEYS.forEach((k, i) => $("key").add(new Option(k, i)));
   Object.entries(SCALES).forEach(([id, s]) => $("scale").add(new Option(s.name, id)));
   Object.entries(SOUNDS).forEach(([id, s]) => $("sound").add(new Option(s.name, id)));
+  Object.entries(BEATS).forEach(([id, b]) => $("beatStyle").add(new Option(`${b.name} · ${b.bpm}`, id)));
   const bind = (id, fn) => $(id).addEventListener("change", e => { fn(e.target); save(); render(); });
   bind("key", t => S.key = +t.value);
   bind("scale", t => S.scale = t.value);
@@ -797,10 +829,19 @@ function setup() {
   bind("bassSound", t => { releaseBass(); S.bassSound = t.value; });
   bind("bassStyle", t => S.bassStyle = t.value);
   bind("sloppy", t => S.sloppy = t.checked);
+  bind("beatStyle", t => S.beatStyle = t.value);
+  bind("bpm", t => { S.bpm = Math.max(40, Math.min(220, Math.round(+t.value) || 84)); t.value = S.bpm; });
+  bind("beatAuto", t => S.beatAuto = t.checked);
+  bind("beatFills", t => S.beatFills = t.checked);
+  bind("beatMidi", t => S.beatMidi = t.checked);
+  $("beatLevel").addEventListener("input", e => { S.beatLevel = +e.target.value; if (beat.bus) drumBus(); save(); });
+  $("beatGo").onclick = beatButton;
+  $("tap").onclick = tapTempo;
   $("panic").onclick = panic;
   addEventListener("keydown", e => {
     if (e.key === "Escape") return panic();
-    if (/SELECT|INPUT/.test(e.target.tagName)) return;
+    if (/SELECT|INPUT/.test(e.target.tagName) && e.target.type !== "checkbox" && e.target.type !== "range") return;
+    if (e.key === " ") { e.preventDefault(); return beatButton(); }
     if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); stepSong(1); }
     if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); stepSong(-1); }
     if (e.key === "ArrowDown") { e.preventDefault(); stepProg(1); }
@@ -917,15 +958,166 @@ function buildKeyboard() {
   render();
 }
 
+// ---------- Beat ----------
+// 16 steps per bar. X = accent, x = hit, o = soft, g = ghost, . = rest.
+// k kick, s snare, c clap, r rim, h closed hat, o open hat, d ride, z shaker, b click
+// swing: how late the off-beats land (0.5 = straight); swingOn: 16 = 16th-note swing, 8 = 8th-note swing
+const BEATS = {
+  neosoul: { name: "Neo soul", bpm: "70–92", swing: 0.62, swingOn: 16,
+    k: "x......o..x.....", s: "....x..g....x..g", h: "x.o.x.o.x.o.x.oo", r: "..........g....." },
+  boombap: { name: "Boom bap", bpm: "84–96", swing: 0.58, swingOn: 16,
+    k: "x.....x...x..o..", s: "....X.......X...", h: "x.x.x.x.x.x.x.x." },
+  slowjam: { name: "R&B slow jam (half-time)", bpm: "60–75", swing: 0.56, swingOn: 16,
+    k: "x.......x.o.....", s: "........X.......", c: "........x.......", h: "x.ox.ox.x.ox.oxo" },
+  trap: { name: "Trap / modern R&B (half-time)", bpm: "60–80", swing: 0.5, swingOn: 16,
+    k: "x......x..x.....", c: "........X.......", h: "x.x.x.xxx.x.xxxx", o: "..............o." },
+  pop: { name: "Pop / straight", bpm: "90–130", swing: 0.5, swingOn: 16,
+    k: "x.......x.x.....", s: "....X.......X...", h: "x.x.x.x.x.x.x.x." },
+  funk: { name: "Funk", bpm: "95–115", swing: 0.53, swingOn: 16,
+    k: "x..x..x...x..x..", s: "....X..g.g..X..g", h: "XoxoXoxoXoxoXoxo", o: "...........o...." },
+  gospel: { name: "Gospel shuffle", bpm: "70–100", swing: 0.66, swingOn: 8,
+    k: "x.....x.x.......", s: "....X.......X...", h: "x.x.x.x.x.x.x.x.", c: "....x.......x..." },
+  jazz: { name: "Jazz swing (ride)", bpm: "100–180", swing: 0.66, swingOn: 8, fill: false,
+    d: "x...x.x.x...x.x.", h: "....x.......x...", k: "g...g...g...g..." },
+  bossa: { name: "Bossa nova", bpm: "120–145", swing: 0.5, swingOn: 16, fill: false,
+    k: "x..xx..xx..xx..x", r: "x..x..x...x..x..", z: "xooxxooxxooxxoox" },
+  click: { name: "Click only (metronome)", bpm: "any", swing: 0.5, swingOn: 16, fill: false, b: "X...x...x...x..." },
+};
+// A fill for the last half of every 4th bar
+const FILL = { k: "x.......", s: "x.g.x.xx", t: "....x.x.", l: "......xx" };
+const LEVEL = { X: 1, x: 0.8, o: 0.5, g: 0.22 };
+// General MIDI drum notes, so an MPC drum program set to GM plays the beat
+const GM = { k: 36, s: 38, c: 39, r: 37, h: 42, o: 46, d: 51, z: 70, b: 76, t: 48, l: 45, crash: 49 };
+
+const beat = { running: false, armed: false, next: 0, step: 0, bar: 0, timer: 0, ui: [], noise: null, bus: null, openHat: null, taps: [] };
+function drumBus() {
+  initAudio();
+  if (!beat.bus) {
+    beat.bus = ctx.createGain(); beat.bus.connect(comp);
+    const len = ctx.sampleRate, b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    beat.noise = b;
+  }
+  beat.bus.gain.setTargetAtTime(S.beatLevel * 0.9, ctx.currentTime, 0.02);
+  return beat.bus;
+}
+// Little synth helpers: an envelope, a noise burst, a pitched blip
+function env(t, v, attack, decay) {
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay); g.connect(beat.bus); return g;
+}
+function noise(t, v, decay, type, freq, q = 0.8, attack = 0.001) {
+  const src = ctx.createBufferSource(); src.buffer = beat.noise;
+  const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = env(t, v, attack, decay); src.connect(f); f.connect(g);
+  src.start(t, Math.random() * 0.5); src.stop(t + attack + decay + 0.05); return src;
+}
+function blip(t, v, from, to, decay, type = "sine") {
+  const o = ctx.createOscillator(); o.type = type;
+  o.frequency.setValueAtTime(from, t); o.frequency.exponentialRampToValueAtTime(to, t + decay * 0.6);
+  o.connect(env(t, v, 0.002, decay)); o.start(t); o.stop(t + decay + 0.05);
+}
+const DRUM = {
+  k: (t, v) => { blip(t, v * 1.1, 150, 42, 0.42); noise(t, v * 0.25, 0.012, "lowpass", 3000); },
+  s: (t, v) => { noise(t, v * 0.7, 0.17, "bandpass", 1900, 0.7); blip(t, v * 0.45, 230, 170, 0.09, "triangle"); },
+  c: (t, v) => { [0, 0.011, 0.022].forEach(d => noise(t + d, v * 0.55, d === 0.022 ? 0.16 : 0.01, "bandpass", 1300, 1.2)); },
+  r: (t, v) => { blip(t, v * 0.5, 1700, 1600, 0.03, "triangle"); noise(t, v * 0.25, 0.02, "bandpass", 3500, 2); },
+  h: (t, v) => { if (beat.openHat) { try { beat.openHat.stop(t); } catch {} beat.openHat = null; }
+    noise(t, v * 0.35, 0.045, "highpass", 7500); },
+  o: (t, v) => { beat.openHat = noise(t, v * 0.32, 0.38, "highpass", 7000); },
+  d: (t, v) => { noise(t, v * 0.22, 0.7, "bandpass", 6500, 0.6); blip(t, v * 0.05, 3200, 3100, 0.5, "square"); },
+  z: (t, v) => noise(t, v * 0.22, 0.06, "highpass", 5500, 0.7, 0.012),
+  b: (t, v) => blip(t, v * 0.5, v > 0.9 ? 2000 : 1500, v > 0.9 ? 2000 : 1500, 0.035),
+  t: (t, v) => blip(t, v * 0.8, 220, 150, 0.28),
+  l: (t, v) => blip(t, v * 0.85, 150, 95, 0.32),
+  crash: (t, v) => noise(t, v * 0.35, 1.3, "highpass", 4500),
+};
+function hit(inst, t, v) {
+  if (S.beatMidi && midiOut) {
+    const ms = performance.now() + (t - ctx.currentTime) * 1000, n = GM[inst];
+    midiOut.send([0x99, n, Math.round(20 + v * 107)], ms); midiOut.send([0x89, n, 0], ms + 60);
+  } else DRUM[inst](t, v);
+}
+function scheduleStep(step, bar, t) {
+  const st = BEATS[S.beatStyle] || BEATS.neosoul;
+  const filling = S.beatFills && st.fill !== false && bar % 4 === 3 && step >= 8;
+  if (S.beatFills && st.fill !== false && bar % 4 === 0 && bar > 0 && step === 0) hit("crash", t, 0.7);
+  for (const inst of Object.keys(DRUM)) {
+    const pat = filling ? (FILL[inst] ? " ".repeat(8) + FILL[inst] : (inst === "h" ? st.h : null)) : st[inst];
+    const c = pat && pat[step];
+    if (c && LEVEL[c]) hit(inst, t, LEVEL[c]);
+  }
+  beat.ui.push({ t, step, bar });
+}
+function stepTime(step) {
+  const st = BEATS[S.beatStyle] || BEATS.neosoul, d = 60 / S.bpm / 4;
+  // Swung off-beats land late
+  if (st.swingOn === 16 && step % 2 === 1) return d + (st.swing - 0.5) * 2 * d;
+  if (st.swingOn === 8 && step % 4 === 2) return d + (st.swing - 0.5) * 4 * d;
+  return d;
+}
+function beatTick() {
+  while (beat.next < ctx.currentTime + 0.12) {
+    scheduleStep(beat.step, beat.bar, beat.next + (beat.step ? stepTime(beat.step) - 60 / S.bpm / 4 : 0));
+    beat.next += 60 / S.bpm / 4;
+    if (++beat.step === 16) { beat.step = 0; beat.bar++; }
+  }
+  const now = ctx.currentTime;
+  while (beat.ui.length > 1 && beat.ui[1].t <= now) beat.ui.shift();
+  if (beat.ui[0] && beat.ui[0].t <= now) showBeat(beat.ui[0]);
+}
+function beatStart() {
+  drumBus(); ctx.resume();
+  beat.armed = false;
+  if (beat.running) return showBeat();
+  beat.running = true; beat.step = 0; beat.bar = 0; beat.ui = [];
+  beat.next = ctx.currentTime + 0.03;
+  beatTick(); beat.timer = setInterval(beatTick, 25);
+  showBeat();
+}
+function beatStop() {
+  clearInterval(beat.timer); beat.running = false; beat.armed = false; beat.ui = [];
+  if (beat.openHat) { try { beat.openHat.stop(); } catch {} beat.openHat = null; }
+  showBeat();
+}
+// ▶ Beat: start now, or (with "Start on first chord") wait for the first chord
+function beatButton() {
+  if (beat.running || beat.armed) return beatStop();
+  if (S.beatAuto) { beat.armed = true; drumBus(); return showBeat(); }
+  beatStart();
+}
+function tapTempo() {
+  const now = performance.now();
+  beat.taps = beat.taps.filter(t => now - t < 2500).concat(now);
+  if (beat.taps.length >= 2) {
+    const gaps = beat.taps.slice(1).map((t, i) => t - beat.taps[i]);
+    S.bpm = Math.round(60000 / (gaps.reduce((a, b) => a + b) / gaps.length));
+    S.bpm = Math.max(40, Math.min(220, S.bpm)); save(); syncUI();
+  }
+}
+function showBeat(pos) {
+  const dots = document.querySelectorAll("#beatDots i"), b = pos ? Math.floor(pos.step / 4) : -1;
+  dots.forEach((d, i) => { d.classList.toggle("on", beat.running && i === b); d.classList.toggle("one", i === 0); });
+  const go = $("beatGo"); if (!go) return;
+  go.textContent = beat.running ? "■ Stop beat" : beat.armed ? "… Waiting" : "▶ Beat";
+  go.classList.toggle("on", beat.running); go.classList.toggle("armed", beat.armed);
+  $("beatInfo").textContent = beat.running ? `Bar ${(pos ? pos.bar : 0) + 1}` + (S.beatFills && BEATS[S.beatStyle].fill !== false && pos && pos.bar % 4 === 3 ? " · fill" : "")
+    : beat.armed ? "Comes in on your first chord" : "";
+}
+
 // ---------- Set list ----------
 const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog",
-  "bassSplit", "bassSound", "bassStyle", "sloppy"];
+  "bassSplit", "bassSound", "bassStyle", "sloppy",
+  "beatStyle", "bpm", "beatAuto", "beatFills"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];
 function loadSong(i) {
   const song = S.setlist[i]; if (!song) return;
   S.song = i; progPos = 0;
   SONG_FIELDS.forEach(f => S[f] = f in song ? song[f] : DEFAULTS[f]);
+  // A running beat keeps going with the new song's tempo and style, unless that song waits for its first chord
+  if (S.beatAuto && beat.running) { beatStop(); beat.armed = true; showBeat(); }
   syncUI(); save(); render();
 }
 function stepSong(d) {
