@@ -42,13 +42,14 @@
   #nowNum { font-size: 40px; color: var(--dim); font-weight: 600; }
   #nowHint { margin-left: auto; color: var(--dim); text-align: right; font-size: 14px; }
   #nowHint b { color: var(--text); font-size: 22px; display: block; }
+  #nowHint .press { color: #4ade80; font-weight: 800; font-size: 18px; }
 
-  .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
   .tile { position: relative; background: var(--panel); border: 2px solid var(--line); border-radius: 14px;
     padding: 14px 10px 12px; text-align: center; cursor: pointer; user-select: none;
     transition: transform .06s, background .1s, border-color .1s; }
   .tile .num { font-size: 18px; font-weight: 700; color: var(--fn); }
-  .tile .name { font-size: 30px; font-weight: 800; margin: 4px 0 2px; }
+  .tile .name { font-size: clamp(16px, 2vw, 30px); font-weight: 800; margin: 4px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile .pad { font-size: 11px; color: var(--dim); letter-spacing: .06em; }
   .tile .bar { position: absolute; left: 10px; right: 10px; top: 6px; height: 3px; border-radius: 2px; background: var(--fn); opacity: .7; }
   .tile.next { border-color: var(--fn); box-shadow: 0 0 0 1px var(--fn) inset; }
@@ -75,6 +76,9 @@
   .pair { display: flex; gap: 4px; }
   select[hidden] { display: none; }
   .wk .dot, .bk .dot { position: absolute; left: 50%; bottom: 10px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; }
+  .wk.target::after, .bk.target::after { content: ""; position: absolute; inset: 2px; border: 3px solid #4ade80;
+    border-radius: 0 0 5px 5px; box-shadow: 0 0 14px #4ade80; pointer-events: none; }
+  .wk.target .lbl { color: #0d0f14; font-weight: 800; }
   .wk.press, .bk.press { background: var(--accent) !important; }
   .wk.sound .dot, .bk.sound .dot { background: var(--dom); }
   .wk .lbl { position: absolute; bottom: 26px; width: 100%; text-align: center; font-size: 10px; color: #333a4d; }
@@ -208,7 +212,7 @@
 </div>
 
 <div class="kbwrap">
-  <div class="kbhead"><span>Gold underline = bass keys · blue underline = chord keys · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
+  <div class="kbhead"><span>Gold underline = bass keys · blue underline = chord keys · <b style="color:#4ade80">green box = press this for the next chord</b> · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
   <div id="kb"></div>
 </div>
 
@@ -265,6 +269,8 @@ const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 delete S.followProg; // replaced by Sloppy mode (off by default)
+// Songs imported from MPC before 2026-11-16 got Sloppy mode off; their chords are mostly outside the key, so turn it on once
+if (!S.mpcSloppy) { S.setlist.forEach(s => { if (/@\d/.test(s.prog || "")) s.sloppy = true; }); S.mpcSloppy = true; }
 
 function spelling() {
   const parent = mod(S.key + SCALES[S.scale].parent, 12);
@@ -830,6 +836,14 @@ function setup() {
   syncUI(); buildKeyboard(); renderSet(); initMidi();
 }
 
+// Would pressing this chord's root in the chord zone play it? (Chord lock, Sloppy mode, or a plain chord of the key)
+function playsFromKeys(chord) {
+  const modes = [S.lowerMode, S.upperMode];
+  if (modes.includes("lock") || (modes.includes("chords") && S.sloppy)) return true;
+  if (!modes.includes("chords") || chord.voicing || chord.bassPc != null) return false;
+  const dia = keyChords()[degreeOf(chord.rootPc + 60)];
+  return dia.rootPc === chord.rootPc && sameSet(dia.tones.slice(1, 3), chord.tones.slice(1, 3));
+}
 function render() {
   const chords = keyChords(), grid = $("grid");
   const lit = new Set([...held.values()].filter(h => h.chord).map(h => h.tile));
@@ -865,17 +879,19 @@ function render() {
   else { $("nowName").textContent = lastChordName || "–"; $("nowNum").textContent = ""; }
   $("nowName").style.opacity = notes.length ? 1 : 0.35;
   $("nowHint").innerHTML = `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
-    (want ? `Up next: <b>${want.chord.name}</b>${after ? "then " + after.chord.name : ""}`
+    (want ? `Up next: <b>${want.chord.name}</b><span class="press">Press ${want.chord.name.match(/^[A-G][#b]?/) ? want.chord.name.match(/^[A-G][#b]?/)[0] : pcName(want.chord.rootPc)}</span>${playsFromKeys(want.chord) ? "" : " (turn on Sloppy mode or Chord lock)"}<br>${after ? "then " + after.chord.name : ""}`
       : next.length ? "Try next: " + next.map(d => chords[d].name).join(" · ") : "Play a chord to see what fits next") +
     (bassNotes().length ? `<br>${S.bassSound === "piano" ? "Left hand" : "Bass"}: ${bassNotes().map(noteName).join(" ")}` : "");
 
-  // Keyboard highlights
+  // Keyboard highlights; the green box marks the keys for the next chord
+  const target = want && playsFromKeys(want.chord) ? want.chord.rootPc : -1;
   const zone = n => !isBass(n) && ["chords", "lock"].includes(n < S.split ? S.lowerMode : S.upperMode);
   document.querySelectorAll("#kb [data-n]").forEach(el => {
     const n = +el.dataset.n;
     el.classList.toggle("out", !inScale(n));
     el.classList.toggle("zone", zone(n));
     el.classList.toggle("bass", isBass(n));
+    el.classList.toggle("target", zone(n) && mod(n, 12) === target);
     el.classList.toggle("press", held.has("k" + n) || held.has("b" + n) || bassHeld.has(n));
     el.classList.toggle("sound", sounding.has(n));
   });
@@ -968,26 +984,35 @@ function progressionSong(json, fileName) {
   // "Chromatic" (no scale set): pick major or minor, whichever more of the chord notes fit
   const fit = sc => chordPcs.filter(pc => SCALES[sc].notes.includes(mod(pc - key, 12))).length;
   const scale = MPC_SCALES[String(p.scale || "").toLowerCase()] || (fit("minor") > fit("major") ? "minor" : "major");
+  // MPC always writes sharps; respell roots and bass notes the way the key does (D#maj7/A# in Eb -> Ebmaj7/Bb)
+  const names = FLAT_MAJORS.has(mod(key + SCALES[scale].parent, 12)) ? FLAT : SHARP;
+  const respell = n => n.replace(/^([A-G][#b]?)/, r => names[pcOf(r)]).replace(/\/([A-G][#b]?)$/, (_, r) => "/" + names[pcOf(r)]);
   const toks = p.chords.map(c => {
-    const name = String(c.name || "").replace(/\s+/g, "").replace(/♯/g, "#").replace(/♭/g, "b");
+    const name = respell(String(c.name || "").replace(/\s+/g, "").replace(/♯/g, "#").replace(/♭/g, "b"));
     const notes = (c.notes || []).filter(n => Number.isInteger(n) && n >= 0 && n < 128).sort((a, b) => a - b);
     return (name || nameNotes(notes).name.replace(/\s+/g, "")) + (notes.length ? "@" + notes.join(".") : "");
   });
   const prog = toks.map((t, i) => (i && i % 4 === 0 ? "| " : "") + t).join(" ");
   const sevenths = p.chords.filter(c => /[679]/.test(c.name || "")).length > p.chords.length / 2;
   const name = String(p.name || fileName.replace(/\.progression$/i, "")).split(" - ").pop().replace(/_/g, " ").trim();
-  return { name, ...songOf(), key, scale, sevenths, prog };
+  return { name, ...songOf(), key, scale, sevenths, prog, sloppy: true }; // most of these chords are outside the key
 }
 async function importProgressions(files) {
-  const added = [], failed = [];
+  const added = [], failed = []; let updated = 0;
   for (const f of files) {
     try {
       const song = progressionSong(JSON.parse(await f.text()), f.name);
-      if (!S.setlist.some(s => s.name === song.name && s.prog === song.prog)) added.push(song);
+      // Already imported: refresh its chart and key, keep its other settings
+      const old = S.setlist.find(s => s.name === song.name && /@\d/.test(s.prog || ""));
+      if (old) { Object.assign(old, { key: song.key, scale: song.scale, sevenths: song.sevenths, prog: song.prog }); updated++; }
+      else added.push(song);
     } catch { failed.push(f.name); }
   }
   if (added.length) { const at = S.setlist.length; S.setlist.push(...added); loadSong(at); $("listPanel").hidden = false; }
-  alert((added.length ? `Added ${added.length} song${added.length > 1 ? "s" : ""} to the end of your set list.` : "No new songs added (they're already in your set list).") +
+  else if (updated && current()) loadSong(S.song);
+  const plural = n => n + " song" + (n > 1 ? "s" : "");
+  alert([added.length && `Added ${plural(added.length)} to the end of your set list.`, updated && `Updated ${plural(updated)} already in your set list.`]
+    .filter(Boolean).join(" ") +
     (failed.length ? `\n\nCouldn't read: ${failed.join(", ")}` : ""));
 }
 const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
