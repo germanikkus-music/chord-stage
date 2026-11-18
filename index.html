@@ -982,9 +982,17 @@ const BEATS = {
   bossa: { name: "Bossa nova", bpm: "120–145", swing: 0.5, swingOn: 16, fill: false,
     k: "x..xx..xx..xx..x", r: "x..x..x...x..x..", z: "xooxxooxxooxxoox" },
   click: { name: "Click only (metronome)", bpm: "any", swing: 0.5, swingOn: 16, fill: false, b: "X...x...x...x..." },
+  // 3/4 styles: 12 steps per bar
+  slow34: { name: "Slow 3/4 (soft ride + brush)", bpm: "60–80", steps: 12, swing: 0.5, swingOn: 16, fill: false,
+    k: "o...........", d: "o...g...g...", z: "....g...g..." },
+  jazzwaltz: { name: "Jazz waltz 3/4", bpm: "110–170", steps: 12, swing: 0.66, swingOn: 8,
+    d: "x...x.x.x...", h: "....x...x...", k: "o..........." },
+  click34: { name: "Click only 3/4", bpm: "any", steps: 12, swing: 0.5, swingOn: 16, fill: false, b: "X...x...x..." },
 };
-// A fill for the last half of every 4th bar
+const stepsOf = st => st.steps || 16;
+// A fill for the end of every 4th bar (last half bar in 4/4, last 6 steps in 3/4)
 const FILL = { k: "x.......", s: "x.g.x.xx", t: "....x.x.", l: "......xx" };
+const FILL3 = { k: "x.....", s: "g.x.xx", t: "....x.", l: ".....x" };
 const LEVEL = { X: 1, x: 0.8, o: 0.5, g: 0.22 };
 // General MIDI drum notes, so an MPC drum program set to GM plays the beat
 const GM = { k: 36, s: 38, c: 39, r: 37, h: 42, o: 46, d: 51, z: 70, b: 76, t: 48, l: 45, crash: 49 };
@@ -1041,10 +1049,11 @@ function hit(inst, t, v) {
 }
 function scheduleStep(step, bar, t) {
   const st = BEATS[S.beatStyle] || BEATS.neosoul;
-  const filling = S.beatFills && st.fill !== false && bar % 4 === 3 && step >= 8;
+  const n = stepsOf(st), fill = n === 12 ? FILL3 : FILL, from = n - fill.k.length;
+  const filling = S.beatFills && st.fill !== false && bar % 4 === 3 && step >= from;
   if (S.beatFills && st.fill !== false && bar % 4 === 0 && bar > 0 && step === 0) hit("crash", t, 0.7);
   for (const inst of Object.keys(DRUM)) {
-    const pat = filling ? (FILL[inst] ? " ".repeat(8) + FILL[inst] : (inst === "h" ? st.h : null)) : st[inst];
+    const pat = filling ? (fill[inst] ? " ".repeat(from) + fill[inst] : (inst === "h" ? st.h : null)) : st[inst];
     const c = pat && pat[step];
     if (c && LEVEL[c]) hit(inst, t, LEVEL[c]);
   }
@@ -1061,7 +1070,7 @@ function beatTick() {
   while (beat.next < ctx.currentTime + 0.12) {
     scheduleStep(beat.step, beat.bar, beat.next + (beat.step ? stepTime(beat.step) - 60 / S.bpm / 4 : 0));
     beat.next += 60 / S.bpm / 4;
-    if (++beat.step === 16) { beat.step = 0; beat.bar++; }
+    if (++beat.step >= stepsOf(BEATS[S.beatStyle] || BEATS.neosoul)) { beat.step = 0; beat.bar++; }
   }
   const now = ctx.currentTime;
   while (beat.ui.length > 1 && beat.ui[1].t <= now) beat.ui.shift();
@@ -1098,7 +1107,8 @@ function tapTempo() {
 }
 function showBeat(pos) {
   const dots = document.querySelectorAll("#beatDots i"), b = pos ? Math.floor(pos.step / 4) : -1;
-  dots.forEach((d, i) => { d.classList.toggle("on", beat.running && i === b); d.classList.toggle("one", i === 0); });
+  const beats = stepsOf(BEATS[S.beatStyle] || BEATS.neosoul) / 4;
+  dots.forEach((d, i) => { d.classList.toggle("on", beat.running && i === b); d.classList.toggle("one", i === 0); d.style.display = i < beats ? "" : "none"; });
   const go = $("beatGo"); if (!go) return;
   go.textContent = beat.running ? "■ Stop beat" : beat.armed ? "… Waiting" : "▶ Beat";
   go.classList.toggle("on", beat.running); go.classList.toggle("armed", beat.armed);
@@ -1182,12 +1192,18 @@ function progressionSong(json, fileName) {
   const toks = p.chords.map(c => {
     const name = respell(String(c.name || "").replace(/\s+/g, "").replace(/♯/g, "#").replace(/♭/g, "b"));
     const notes = (c.notes || []).filter(n => Number.isInteger(n) && n >= 0 && n < 128).sort((a, b) => a - b);
-    return (name || nameNotes(notes).name.replace(/\s+/g, "")) + (notes.length ? "@" + notes.join(".") : "");
+    const label = String(c.section || "").replace(/[\[\]]/g, "").trim();
+    return (label ? `[${label}] ` : "") + (name || nameNotes(notes).name.replace(/\s+/g, "")) + (notes.length ? "@" + notes.join(".") : "");
   });
-  const prog = toks.map((t, i) => (i && i % 4 === 0 ? "| " : "") + t).join(" ");
+  const prog = toks.map((t, i) => (i && i % 4 === 0 && t[0] !== "[" ? "| " : "") + t).join(" ");
   const sevenths = p.chords.filter(c => /[679]/.test(c.name || "")).length > p.chords.length / 2;
   const name = String(p.name || fileName.replace(/\.progression$/i, "")).split(" - ").pop().replace(/_/g, " ").trim();
-  return { name, ...songOf(), key, scale, sevenths, prog, sloppy: true }; // most of these chords are outside the key
+  // Optional Chord Stage extras in the file (tempo, beat, sound...); MPC's own files don't have them
+  const extra = {}, cs = p.chordStage || {};
+  for (const f of SONG_FIELDS) if (f in cs && typeof cs[f] === typeof DEFAULTS[f]) extra[f] = cs[f];
+  if (extra.beatStyle && !BEATS[extra.beatStyle]) delete extra.beatStyle;
+  if (extra.sound && !SOUNDS[extra.sound]) delete extra.sound;
+  return { name, ...songOf(), key, scale, sevenths, prog, sloppy: true, ...extra }; // most MPC chords are outside the key
 }
 async function importProgressions(files) {
   const added = [], failed = []; let updated = 0;
