@@ -8,7 +8,7 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - Pads 1–7 play the chords of the key. With a progression loaded, pad 8 plays the next chord.
 - Type a progression per song (`Imaj7 vi7 ii7 V7`, `G D Em C`, `[Chorus] IV I V vi`) and the screen follows along as you play.
 - Import MPC `.progression` files (Edit set list → **+ MPC progressions**, or drop them on the page). Each becomes a song with its key and chord chart filled in, and Chord lock, Sloppy mode and pad 8 play the file's exact voicings.
-- A green box on the on-screen keyboard marks the key to press for the next chord.
+- A pulsing green key marked L on the on-screen keyboard is the key to press for the next chord. It stays close to where your left hand last played; the same note in other octaves gets a faint dashed outline.
 - Beat: drum styles in 4/4 (neo soul, boom bap, slow jam, trap, pop, funk, gospel, jazz, bossa, click) and 3/4 (slow ride + brush, jazz waltz, click) with tempo, tap tempo, fills every 4 bars and **Start on first chord**. Space starts and stops it. Each song saves its own beat. **Drums to MPC** sends the beat as General MIDI drum notes on channel 10.
 - Set list with per-song settings; switch with ◀ ▶, arrow keys, Page Up/Down (foot pedal) or knob 8.
 - Built-in sounds, or send MIDI to MPC 3 (via the IAC Driver) or the MPK's 5-pin MIDI out.

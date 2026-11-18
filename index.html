@@ -76,8 +76,15 @@
   .pair { display: flex; gap: 4px; }
   select[hidden] { display: none; }
   .wk .dot, .bk .dot { position: absolute; left: 50%; bottom: 10px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; }
-  .wk.target::after, .bk.target::after { content: ""; position: absolute; inset: 2px; border: 3px solid #4ade80;
-    border-radius: 0 0 5px 5px; box-shadow: 0 0 14px #4ade80; pointer-events: none; }
+  /* The one key to press glows and pulses with an L; other octaves of it get a faint dashed outline */
+  .wk.target::after, .bk.target::after { content: "L"; position: absolute; inset: 2px; border: 3px solid #4ade80;
+    border-radius: 0 0 5px 5px; background: rgba(74,222,128,.45); box-shadow: 0 0 16px #4ade80; pointer-events: none;
+    display: flex; align-items: flex-start; justify-content: center; padding-top: 6px;
+    font: 800 15px system-ui, sans-serif; color: #0d0f14; animation: nextPulse 0.9s ease-in-out infinite; }
+  .bk.target::after { color: #fff; font-size: 12px; }
+  .wk.alt::after, .bk.alt::after { content: ""; position: absolute; inset: 3px; border: 2px dashed rgba(74,222,128,.45);
+    border-radius: 0 0 5px 5px; pointer-events: none; }
+  @keyframes nextPulse { 50% { background: rgba(74,222,128,.12); box-shadow: 0 0 4px #4ade80; } }
   .wk.target .lbl { color: #0d0f14; font-weight: 800; }
   .wk.press, .bk.press { background: var(--accent) !important; }
   .wk.sound .dot, .bk.sound .dot { background: var(--dom); }
@@ -236,7 +243,7 @@
 </div>
 
 <div class="kbwrap">
-  <div class="kbhead"><span>Gold underline = bass keys · blue underline = chord keys · <b style="color:#4ade80">green box = press this for the next chord</b> · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
+  <div class="kbhead"><span>Gold underline = bass keys · blue underline = chord keys · <b style="color:#4ade80">pulsing green L = press this for the next chord</b> (dashed = same note, other octave) · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
   <div id="kb"></div>
 </div>
 
@@ -577,7 +584,7 @@ function releasePedal() {
   [...sustained].forEach(n => { sustained.delete(n); outOff(n); });
 }
 
-let lastChord = null, lastChordName = "";
+let lastChord = null, lastChordName = "", lastChordKey = null;
 // tile: which chord tile (0-7) lights up while held
 function press(id, notes, vel, chord, tile, fromProgPad) {
   release(id);
@@ -585,6 +592,7 @@ function press(id, notes, vel, chord, tile, fromProgPad) {
   notes.forEach(n => outOn(n, vel));
   if (chord && notes.length && beat.armed) beatStart();
   if (chord && chord.degree >= 0) lastChord = chord.degree;
+  if (chord && id[0] === "k") lastChordKey = +id.slice(1);
   if (chord && !fromProgPad) progressHit(chord);
   render();
 }
@@ -927,12 +935,21 @@ function render() {
   // Keyboard highlights; the green box marks the keys for the next chord
   const target = want && playsFromKeys(want.chord) ? want.chord.rootPc : -1;
   const zone = n => !isBass(n) && ["chords", "lock"].includes(n < S.split ? S.lowerMode : S.upperMode);
+  // Only one key is "the" key: the left-hand one nearest where the hand last played a chord
+  // (or the middle of the chord keys), so the hand stays put instead of guessing between octaves
+  const keys = [...document.querySelectorAll("#kb [data-n]")].map(el => +el.dataset.n);
+  const zoneKeys = keys.filter(zone), cands = zoneKeys.filter(n => mod(n, 12) === target);
+  const left = cands.filter(n => n < S.split), pool = left.length ? left : cands;
+  const side = zoneKeys.filter(n => pool.length && (n < S.split) === (pool[0] < S.split));
+  const home = lastChordKey != null && zone(lastChordKey) ? lastChordKey : (side[0] + side[side.length - 1]) / 2;
+  const best = pool.reduce((b, n) => b == null || Math.abs(n - home) < Math.abs(b - home) ? n : b, null);
   document.querySelectorAll("#kb [data-n]").forEach(el => {
     const n = +el.dataset.n;
     el.classList.toggle("out", !inScale(n));
     el.classList.toggle("zone", zone(n));
     el.classList.toggle("bass", isBass(n));
-    el.classList.toggle("target", zone(n) && mod(n, 12) === target);
+    el.classList.toggle("target", n === best);
+    el.classList.toggle("alt", n !== best && cands.includes(n));
     el.classList.toggle("press", held.has("k" + n) || held.has("b" + n) || bassHeld.has(n));
     el.classList.toggle("sound", sounding.has(n));
   });
