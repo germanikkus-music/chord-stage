@@ -191,7 +191,8 @@
     <select id="bassSound"><option value="piano">Left hand (piano)</option><option value="guitar">Bass guitar (ch 2)</option></select>
     <select id="bassStyle"><option value="single">Single notes</option><option value="octave">Octaves</option><option value="fifth">Root + 5th</option></select></span></div>
   <div class="ctl"><label>Wind (Aerophone)</label><span class="pair"><select id="windSound"></select>
-    <select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select></span></div>
+    <select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select>
+    <button id="windTune" title="Click, then finger C on the Aerophone and blow. Fixes an instrument whose transpose is set off C.">Tune</button></span></div>
   <div class="ctl"><label>Split at</label><button id="split">C4</button></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="bass" checked> Low root under chords</label></div>
@@ -319,7 +320,7 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
-  windSound: "recorder", windOct: 0,
+  windSound: "recorder", windOct: 0, windCal: 0,
   beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -764,10 +765,13 @@ function renderRec(want) {
 // Its notes always play one melody note in the wind sound, never chords, and breath (CC2, CC11
 // or aftertouch) sets the volume while you blow. Also sent to MIDI channel 3 for the MPC.
 const windPorts = new Set();
-let windNote = null, windVoice = null, windBreath = false;
+let windNote = null, windVoice = null, windBreath = false, windLearn = false;
+// windCal: how far the instrument's transpose is off C (it sends C# for a C fingering -> 1)
+const windPitch = note => note - (S.windCal || 0) + (+S.windOct || 0);
 const isWindPort = port => windPorts.has(port.id) || /aerophone|\bae-?\d|ewi|wind/i.test(port.name || "");
 function windDown(note, vel) {
-  const n = note + (+S.windOct || 0); if (n < 0 || n > 127) return;
+  if (windLearn) { const d = mod(note, 12); S.windCal = d > 6 ? d - 12 : d; windLearn = false; save(); syncUI(); }
+  const n = windPitch(note); if (n < 0 || n > 127) return;
   // Legato: the new note takes over from the old one without a gap
   if (windVoice) windVoice.stop(0.03);
   if (midiOut && windNote != null) midiOut.send([0x82, windNote, 0]);
@@ -780,7 +784,7 @@ function windDown(note, vel) {
   render();
 }
 function windUp(note) {
-  if (windNote !== note + (+S.windOct || 0)) return; // an old note let go after a newer one began
+  if (windNote !== windPitch(note)) return; // an old note let go after a newer one began
   if (windVoice) windVoice.stop(); windVoice = null;
   if (midiOut) midiOut.send([0x82, windNote, 0]);
   windNote = null; render();
@@ -933,6 +937,7 @@ let learnSplit = false, learnBass = false;
 function syncUI() {
   $("key").value = S.key; $("scale").value = S.scale; $("sound").value = S.sound;
   $("lowerMode").value = S.lowerMode; $("upperMode").value = S.upperMode;
+  $("windTune").textContent = windLearn ? "Finger C and blow…" : S.windCal ? "Tuned " + (S.windCal > 0 ? "+" : "") + S.windCal : "Tune";
   $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
   $("split").textContent = learnSplit ? "Press a key…" : noteName(S.split);
@@ -953,6 +958,7 @@ function setup() {
   Object.entries(BEATS).forEach(([id, b]) => $("beatStyle").add(new Option(`${b.name} · ${b.bpm}`, id)));
   const bind = (id, fn) => $(id).addEventListener("change", e => { fn(e.target); save(); render(); });
   bind("windSound", t => S.windSound = t.value);
+  $("windTune").onclick = () => { windLearn = !windLearn; syncUI(); };
   $("showRec").onclick = () => { S.recView = true; save(); render(); };
   $("showKb").onclick = () => { S.recView = false; save(); render(); };
   bind("windOct", t => S.windOct = +t.value);
