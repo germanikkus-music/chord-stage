@@ -192,6 +192,7 @@
     <select id="bassStyle"><option value="single">Single notes</option><option value="octave">Octaves</option><option value="fifth">Root + 5th</option></select></span></div>
   <div class="ctl"><label>Wind (Aerophone)</label><span class="pair"><select id="windSound"></select>
     <select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select>
+    <label class="toggle" title="Blow the next chord's root note to move the progression on and play that chord as backing"><input type="checkbox" id="windChords"> Root plays next chord</label>
     <button id="windTune" title="Click, then finger C on the Aerophone and blow. Fixes an instrument whose transpose is set off C.">Tune</button></span></div>
   <div class="ctl"><label>Split at</label><button id="split">C4</button></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
@@ -320,7 +321,7 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
-  windSound: "recorder", windOct: 0, windCal: 0,
+  windSound: "recorder", windOct: 0, windCal: 0, windChords: true,
   beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -753,7 +754,7 @@ function renderRec(want) {
   const now = shownChord;
   let h = "";
   if (now) h += `<div class="grp"><div class="ttl">Now<b>${now.name}</b></div><div class="row2">${chordCards(now, playPc)}</div></div>`;
-  if (want && (!now || want.chord.name !== now.name)) h += `<div class="grp next"><div class="ttl">Next<b>${want.chord.name}</b></div><div class="row2">${chordCards(want.chord, -1)}</div></div>`;
+  if (want && (!now || want.chord.name !== now.name)) h += `<div class="grp next"><div class="ttl">Next<b>${want.chord.name}</b>${S.windChords ? ` · blow <b style="color:#4ade80">${want.chord.name.match(/^[A-G][#b]?/)?.[0] || pcName(want.chord.rootPc)}</b> to move on` : ""}</div><div class="row2">${chordCards(want.chord, -1)}</div></div>`;
   if (windNote != null) {
     const nm = pcName(playPc), fits = now && now.tones.some(t => mod(now.rootPc + t, 12) === playPc);
     h += `<div class="grp"><div class="ttl">You're playing</div><div class="row2"><div class="fing ${now ? (fits ? "hit" : "off") : ""}">${fingerSvg(fingering(playPc, /b/.test(nm)))}<div class="nm">${nm}</div><div class="rl">${now ? (fits ? "in the chord" : "passing note") : noteName(windNote)}</div></div></div></div>`;
@@ -781,7 +782,22 @@ function windDown(note, vel) {
     windVoice = makeVoice(n, vel, S.windSound === "keys" ? S.sound : S.windSound);
   }
   if (midiOut) midiOut.send([0x92, n, vel]);
+  windFollow(n, vel);
   render();
+}
+// Both hands are on the instrument, so it drives the band: holding the next chord's root
+// (briefly, so passing notes in a melody don't count) moves on and plays that chord as backing
+let windTimer = 0;
+function windFollow(n, vel) {
+  clearTimeout(windTimer);
+  const steps = progSteps(); if (!S.windChords || !steps.length) return;
+  const chord = steps[progPos % steps.length].chord;
+  if (mod(n, 12) !== chord.rootPc) return;
+  windTimer = setTimeout(() => {
+    if (windNote !== n) return;
+    progPos = (progPos + 1) % steps.length;
+    press("w", voice(chord, 48 + chord.rootPc), Math.max(70, vel - 10), chord, chord.degree, true);
+  }, 120);
 }
 function windUp(note) {
   if (windNote !== windPitch(note)) return; // an old note let go after a newer one began
@@ -937,6 +953,7 @@ let learnSplit = false, learnBass = false;
 function syncUI() {
   $("key").value = S.key; $("scale").value = S.scale; $("sound").value = S.sound;
   $("lowerMode").value = S.lowerMode; $("upperMode").value = S.upperMode;
+  $("windChords").checked = S.windChords !== false;
   $("windTune").textContent = windLearn ? "Finger C and blow…" : S.windCal ? "Tuned " + (S.windCal > 0 ? "+" : "") + S.windCal : "Tune";
   $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
@@ -958,6 +975,7 @@ function setup() {
   Object.entries(BEATS).forEach(([id, b]) => $("beatStyle").add(new Option(`${b.name} · ${b.bpm}`, id)));
   const bind = (id, fn) => $(id).addEventListener("change", e => { fn(e.target); save(); render(); });
   bind("windSound", t => S.windSound = t.value);
+  bind("windChords", t => { S.windChords = t.checked; if (!t.checked) release("w"); });
   $("windTune").onclick = () => { windLearn = !windLearn; syncUI(); };
   $("showRec").onclick = () => { S.recView = true; save(); render(); };
   $("showKb").onclick = () => { S.recView = false; save(); render(); };

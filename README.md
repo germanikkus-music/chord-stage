@@ -28,6 +28,8 @@ When the Aerophone is connected, the on-screen keyboard switches to **Aerophone 
 
 Filled keys mean press. The gold small keys are the side keys: the upper one makes a note sharp, the lower one makes it flat.
 
+With **Root plays next chord** on (the default), the Aerophone drives the progression, since both your hands are on it. Blow the next chord's root note and hold it briefly; quick passing notes don't count. Chord Stage moves to that chord, plays it as backing, and lights its button. The chord rings until the next one. The Next card tells you which note to blow.
+
 If the notes come out shifted, the Aerophone's transpose is set away from C. On this one, a C fingering sent C#. Click **Tune** under Wind, finger C and blow. The app learns the offset and corrects every note; the button then shows it, e.g. "Tuned +1".
 
 Connect it by **USB**. Bluetooth MIDI kept failing on this Mac. Quit Chrome before plugging it in, and untick **Discover USB devices** on `chrome://inspect`. Otherwise Chrome (or a running `adb`) grabs the Aerophone and no MIDI port appears.
