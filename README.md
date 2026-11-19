@@ -28,7 +28,10 @@ When the Aerophone is connected, the on-screen keyboard switches to **Aerophone 
 
 Filled keys mean press. The gold small keys are the side keys: the upper one makes a note sharp, the lower one makes it flat.
 
-With **Root plays next chord** on (the default), the Aerophone drives the progression, since both your hands are on it. Blow the next chord's root note and hold it briefly; quick passing notes don't count. Chord Stage moves to that chord, plays it as backing, and lights its button. The chord rings until the next one. A pulsing green **Blow next** fingering, first in the row, shows the note to blow, like the green L on the piano. For a slash chord such as Cmaj7/G, the bass note (G) works too.
+The Aerophone drives the progression, since both your hands are on it. Blow the next chord's root note and hold it briefly; quick passing notes don't count. Chord Stage moves to that chord and lights its button. The setting next to Tune picks what you hear:
+- **Root moves chords (silent)**, the default: only your wind instrument sounds.
+- **Root moves + plays chords**: the chord also plays as backing and rings until the next one.
+- **Melody only**: the Aerophone doesn't move the chords at all. A pulsing green **Blow next** fingering, first in the row, shows the note to blow, like the green L on the piano. For a slash chord such as Cmaj7/G, the bass note (G) works too.
 
 If the notes come out shifted, the Aerophone's transpose is set away from C. On this one, a C fingering sent C#. Click **Tune** under Wind, finger C and blow. The app learns the offset and corrects every note; the button then shows it, e.g. "Tuned +1".
 

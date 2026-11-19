@@ -197,7 +197,7 @@
     <select id="bassStyle"><option value="single">Single notes</option><option value="octave">Octaves</option><option value="fifth">Root + 5th</option></select></span></div>
   <div class="ctl"><label>Wind (Aerophone)</label><span class="pair"><select id="windSound"></select>
     <select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select>
-    <label class="toggle" title="Blow the next chord's root note to move the progression on and play that chord as backing"><input type="checkbox" id="windChords"> Root plays next chord</label>
+    <select id="windChords" title="Blowing the next chord's root note moves the progression on"><option value="silent">Root moves chords (silent)</option><option value="play">Root moves + plays chords</option><option value="off">Melody only</option></select>
     <button id="windTune" title="Click, then finger C on the Aerophone and blow. Fixes an instrument whose transpose is set off C.">Tune</button></span></div>
   <div class="ctl"><label>Split at</label><button id="split">C4</button></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
@@ -326,9 +326,10 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
-  windSound: "recorder", windOct: 0, windCal: 0, windChords: true,
+  windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent",
   beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
+if (typeof S.windChords === "boolean") S.windChords = S.windChords ? "silent" : "off"; // was a checkbox
 delete S.followProg; // replaced by Sloppy mode (off by default)
 // Songs imported from MPC before 2026-11-16 got Sloppy mode off; their chords are mostly outside the key, so turn it on once
 if (!S.mpcSloppy) { S.setlist.forEach(s => { if (/@\d/.test(s.prog || "")) s.sloppy = true; }); S.mpcSloppy = true; }
@@ -760,7 +761,7 @@ function renderRec(want) {
   const now = shownChord;
   let h = "";
   // Like the green L on the piano: the note to blow to move on, pulsing, first in the row
-  if (want && S.windChords) {
+  if (want && S.windChords !== "off") {
     const c = want.chord, card = (pc, nm, cls, rl) =>
       `<div class="fing go${cls}">${fingerSvg(fingering(pc, /b/.test(nm)))}<div class="nm">${nm}</div><div class="rl">${rl}</div></div>`;
     h += `<div class="grp go"><div class="ttl">Blow next<b>→ ${c.name}</b></div><div class="row2">` +
@@ -810,13 +811,16 @@ function windDown(note, vel) {
 let windTimer = 0;
 function windFollow(n, vel) {
   clearTimeout(windTimer);
-  const steps = progSteps(); if (!S.windChords || !steps.length) return;
+  const steps = progSteps(); if (S.windChords === "off" || !steps.length) return;
   const chord = steps[progPos % steps.length].chord;
   if (mod(n, 12) !== chord.rootPc && mod(n, 12) !== chord.bassPc) return;
   windTimer = setTimeout(() => {
     if (windNote !== n) return;
     progPos = (progPos + 1) % steps.length;
-    press("w", voice(chord, 48 + chord.rootPc), Math.max(70, vel - 10), chord, chord.degree, true);
+    // Silent: the chord moves on and lights up, but only the wind instrument sounds
+    const play = S.windChords === "play";
+    press("w", play ? voice(chord, 48 + chord.rootPc) : [], Math.max(70, vel - 10), chord, chord.degree, true);
+    if (!play) { shownChord = chord; if (beat.armed) beatStart(); render(); }
   }, 120);
 }
 function windUp(note) {
@@ -973,7 +977,7 @@ let learnSplit = false, learnBass = false;
 function syncUI() {
   $("key").value = S.key; $("scale").value = S.scale; $("sound").value = S.sound;
   $("lowerMode").value = S.lowerMode; $("upperMode").value = S.upperMode;
-  $("windChords").checked = S.windChords !== false;
+  $("windChords").value = S.windChords;
   $("windTune").textContent = windLearn ? "Finger C and blow…" : S.windCal ? "Tuned " + (S.windCal > 0 ? "+" : "") + S.windCal : "Tune";
   $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
@@ -995,7 +999,7 @@ function setup() {
   Object.entries(BEATS).forEach(([id, b]) => $("beatStyle").add(new Option(`${b.name} · ${b.bpm}`, id)));
   const bind = (id, fn) => $(id).addEventListener("change", e => { fn(e.target); save(); render(); });
   bind("windSound", t => S.windSound = t.value);
-  bind("windChords", t => { S.windChords = t.checked; if (!t.checked) release("w"); });
+  bind("windChords", t => { S.windChords = t.value; release("w"); });
   $("windTune").onclick = () => { windLearn = !windLearn; syncUI(); };
   $("showRec").onclick = () => { S.recView = true; save(); render(); };
   $("showKb").onclick = () => { S.recView = false; save(); render(); };
