@@ -164,7 +164,16 @@
   .sec:first-child { margin-top: 0; }
 
   #start { position: fixed; inset: 0; background: rgba(13,15,20,.92); display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 14px; z-index: 10; cursor: pointer; }
+    flex-direction: column; gap: 14px; z-index: 10; }
+  #start .pick { display: flex; gap: 18px; margin-top: 10px; }
+  #start .pick button { width: 230px; padding: 22px 16px; border-radius: 16px; border: 2px solid var(--line); background: var(--panel);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+  #start .pick button:hover, #start .pick button.was { border-color: #4ade80; }
+  #start .pick .ic { font-size: 46px; line-height: 1; }
+  #start .pick b { font-size: 22px; }
+  #start .pick small { color: var(--dim); font-size: 13px; }
+  #instBtn { margin-left: 10px; font-size: 13px; padding: 4px 10px; }
+  body.inst-horn .piano-only, body.inst-piano .horn-only { display: none !important; }
   #start h1 { margin: 0; font-size: 44px; }
   #start p { margin: 0; color: var(--dim); }
   #start.hide { display: none; }
@@ -176,32 +185,37 @@
 </style>
 </head>
 <body>
-<div id="start"><h1>Chord Stage</h1><p>Click anywhere to start sound</p></div>
+<div id="start"><h1>Chord Stage</h1><p>What are you playing?</p>
+  <div class="pick">
+    <button data-inst="piano"><span class="ic">🎹</span><b>Piano</b><small>MPK keys and pads</small></button>
+    <button data-inst="horn"><span class="ic">🎺</span><b>Horn</b><small>Aerophone or wind controller</small></button>
+  </div></div>
 
 <div class="brand">
   <span class="logo">CHORD<b>STAGE</b></span>
   <span class="maker">Germanikkus</span>
   <a class="guide-link" href="docs/guide.html" target="_blank" rel="noopener">Guide</a>
+  <button id="instBtn" title="Switch between piano and horn">🎹 Piano ▾</button>
 </div>
 
 <header>
   <div class="ctl"><label>Key</label><select id="key"></select></div>
   <div class="ctl"><label>Scale</label><select id="scale"></select></div>
-  <div class="ctl"><label>Sound</label><select id="sound"></select></div>
-  <div class="ctl"><label>Lower keys</label><select id="lowerMode">
+  <div class="ctl piano-only"><label>Sound</label><select id="sound"></select></div>
+  <div class="ctl piano-only"><label>Lower keys</label><select id="lowerMode">
     <option value="chords">Play chords</option><option value="melody">Melody (in key)</option><option value="free">Free</option><option value="lock">Chord lock (right key only)</option></select></div>
-  <div class="ctl"><label>Upper keys</label><select id="upperMode">
+  <div class="ctl piano-only"><label>Upper keys</label><select id="upperMode">
     <option value="melody">Melody (in key)</option><option value="chords">Play chords</option><option value="free">Free</option><option value="lock">Chord lock (right key only)</option></select></div>
-  <div class="ctl"><label>Bass keys</label><span class="pair"><button id="bassSplit">Off</button><button id="bassOff" title="Turn bass keys off">✕</button>
+  <div class="ctl piano-only"><label>Bass keys</label><span class="pair"><button id="bassSplit">Off</button><button id="bassOff" title="Turn bass keys off">✕</button>
     <select id="bassSound"><option value="piano">Left hand (piano)</option><option value="guitar">Bass guitar (ch 2)</option></select>
     <select id="bassStyle"><option value="single">Single notes</option><option value="octave">Octaves</option><option value="fifth">Root + 5th</option></select></span></div>
-  <div class="ctl"><label>Wind (Aerophone)</label><span class="pair"><select id="windSound"></select>
-    <select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select>
-    <select id="windChords" title="Blowing the next chord's root note moves the progression on"><option value="silent">Root moves chords (silent)</option><option value="play">Root moves + plays chords</option><option value="off">Melody only</option></select>
+  <div class="ctl horn-only"><label>Horn sound</label><select id="windSound"></select></div>
+  <div class="ctl horn-only"><label>Octave</label><span class="pair"><select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select></span></div>
+  <div class="ctl horn-only"><label>Chords</label><span class="pair"><select id="windChords" title="Blowing the next chord's root note moves the progression on"><option value="silent">Root moves chords (silent)</option><option value="play">Root moves + plays chords</option><option value="off">Melody only</option></select>
     <button id="windTune" title="Click, then finger C on the Aerophone and blow. Fixes an instrument whose transpose is set off C.">Tune</button></span></div>
-  <div class="ctl"><label>Split at</label><button id="split">C4</button></div>
-  <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
-  <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="bass" checked> Low root under chords</label></div>
+  <div class="ctl piano-only"><label>Split at</label><button id="split">C4</button></div>
+  <div class="ctl piano-only"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
+  <div class="ctl piano-only"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="bass" checked> Low root under chords</label></div>
   <div class="ctl"><label>Send MIDI to</label><select id="out"><option value="">Nothing (built-in sound only)</option></select></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="internal" checked> Built-in sound</label></div>
   <div class="spacer"></div>
@@ -326,7 +340,7 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
-  windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent",
+  windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
   beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 if (typeof S.windChords === "boolean") S.windChords = S.windChords ? "silent" : "off"; // was a checkbox
@@ -753,7 +767,8 @@ function chordCards(chord, playPc) {
 }
 const rootLabel = c => c.name.match(/^[A-G][#b]?/)?.[0] || pcName(c.rootPc);
 let shownChord = null; // the chord the band is on now, for the fingering view
-const recView = () => S.recView === true || (S.recView == null && windPorts.size > 0);
+// Horn shows fingerings, piano shows the keyboard; the buttons on each panel swap them for now
+const recView = () => S.recView != null ? S.recView : S.inst === "horn";
 function renderRec(want) {
   $("recWrap").hidden = !recView(); document.querySelector(".kbwrap").hidden = recView();
   if (!recView()) return;
@@ -978,6 +993,9 @@ function syncUI() {
   $("key").value = S.key; $("scale").value = S.scale; $("sound").value = S.sound;
   $("lowerMode").value = S.lowerMode; $("upperMode").value = S.upperMode;
   $("windChords").value = S.windChords;
+  document.body.classList.toggle("inst-horn", S.inst === "horn"); document.body.classList.toggle("inst-piano", S.inst !== "horn");
+  $("instBtn").textContent = S.inst === "horn" ? "🎺 Horn ▾" : "🎹 Piano ▾";
+  document.querySelectorAll("#start [data-inst]").forEach(b => b.classList.toggle("was", b.dataset.inst === S.inst));
   $("windTune").textContent = windLearn ? "Finger C and blow…" : S.windCal ? "Tuned " + (S.windCal > 0 ? "+" : "") + S.windCal : "Tune";
   $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
@@ -1065,7 +1083,11 @@ function setup() {
     ({ go: () => loadSong(i), up: () => moveSong(i, -1), down: () => moveSong(i, 1),
        ren: () => renameSong(i), del: () => deleteSong(i) })[b.dataset.act]();
   };
-  $("start").onclick = () => { initAudio(); ctx.resume(); $("start").classList.add("hide"); };
+  document.querySelectorAll("#start [data-inst]").forEach(b => b.onclick = () => {
+    initAudio(); ctx.resume(); S.inst = b.dataset.inst; S.recView = null; save();
+    $("start").classList.add("hide"); syncUI(); render();
+  });
+  $("instBtn").onclick = () => $("start").classList.remove("hide");
   syncUI(); buildKeyboard(); renderSet(); initMidi();
 }
 

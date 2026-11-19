@@ -15,11 +15,13 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 
 ## Aerophone (wind)
 
+When Chord Stage opens it asks **Piano** or **Horn**. Each one shows only its own controls. Piano has the key modes, split, bass keys and the on-screen keyboard. Horn has the horn sound, octave, chord-follow, Tune and the fingering view. The 🎹/🎺 button next to Guide switches between them.
+
 Chord Stage can use a Roland Aerophone mini (or another wind controller) for the melody while the MPK plays chords and the beat runs.
 
 1. Pair it on the Mac: open **Audio MIDI Setup**, choose **Window → Show MIDI Studio**, click the **Bluetooth** button and connect the Aerophone. Chrome then sees it like any other MIDI input.
 2. Turn the Aerophone's own speaker down so only Chord Stage sounds.
-3. Pick a voice under **Wind (Aerophone)**: Recorder, Flute, Clarinet, or Same as Sound. Use **Octave up/down** if it sits too high or low.
+3. Choose **Horn** at the start, then pick a voice under **Horn sound**: Recorder, Flute, Clarinet, or Same as Sound. Use **Octave up/down** if it sits too high or low.
 
 When the Aerophone is connected, the on-screen keyboard switches to **Aerophone fingering** diagrams, which follow Roland's AE-01 chart. There's a button to switch back, and one on the keyboard to switch over by hand.
 - **Now:** the notes of the chord that's playing, each drawn as a fingering. The root has a green border.
