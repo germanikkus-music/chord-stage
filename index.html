@@ -175,6 +175,8 @@
   <div class="ctl"><label>Bass keys</label><span class="pair"><button id="bassSplit">Off</button><button id="bassOff" title="Turn bass keys off">✕</button>
     <select id="bassSound"><option value="piano">Left hand (piano)</option><option value="guitar">Bass guitar (ch 2)</option></select>
     <select id="bassStyle"><option value="single">Single notes</option><option value="octave">Octaves</option><option value="fifth">Root + 5th</option></select></span></div>
+  <div class="ctl"><label>Wind (Aerophone)</label><span class="pair"><select id="windSound"></select>
+    <select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select></span></div>
   <div class="ctl"><label>Split at</label><button id="split">C4</button></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="bass" checked> Low root under chords</label></div>
@@ -298,6 +300,7 @@ const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
 const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
+  windSound: "recorder", windOct: 0,
   beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -453,11 +456,13 @@ function nameNotes(notes) {
 }
 
 // ---------- Sound ----------
-let ctx, master, tone, wet, comp;
+let ctx, master, tone, wet, comp, windBus, windNoise;
 const SOUNDS = {
   epiano:  { name: "Electric piano" }, piano: { name: "Soft piano" }, pad: { name: "Warm pad" },
   organ:   { name: "Organ" }, strings: { name: "Strings" }, synth: { name: "Synth keys" },
 };
+// Wind instrument voices (Aerophone / EWI): one note at a time, loudness follows breath
+const WIND_SOUNDS = { recorder: "Recorder", flute: "Flute", clarinet: "Clarinet", keys: "Same as Sound" };
 const mix = { volume: 0.8, tone: 0.7, reverb: 0.25, release: 0.5 };
 function initAudio() {
   if (ctx) return;
@@ -467,6 +472,9 @@ function initAudio() {
   comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
   const verb = ctx.createConvolver(); verb.buffer = impulse(2.6);
   wet = ctx.createGain();
+  windBus = ctx.createGain(); windBus.connect(master);
+  windNoise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  windNoise.getChannelData(0).forEach((_, i, d) => d[i] = Math.random() * 2 - 1);
   master.connect(tone); tone.connect(comp); tone.connect(verb); verb.connect(wet); wet.connect(comp);
   comp.connect(ctx.destination);
   applyMix();
@@ -503,7 +511,7 @@ function synthKill(note) { const v = voices.get(note); if (v) { voices.delete(no
 
 function makeVoice(note, vel, kind = S.sound) {
   const t = ctx.currentTime, f = hz(note), g = ctx.createGain(), amp = 0.25 + 0.75 * (vel / 127);
-  g.gain.value = 0; g.connect(master);
+  g.gain.value = 0; g.connect(WIND_SOUNDS[kind] ? windBus : master);
   const nodes = [];
   const osc = (type, freq, gain, detune = 0) => {
     const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq; o.detune.value = detune;
@@ -524,6 +532,19 @@ function makeVoice(note, vel, kind = S.sound) {
     const h = osc("triangle", f * 2, kind === "piano" ? 0.15 : 0.06);
     c.og.connect(g); h.og.connect(g);
     env = [[0.003, 1], [kind === "epiano" ? 2.5 : 1.6, 0.25]];
+  } else if (kind === "recorder" || kind === "flute" || kind === "clarinet") {
+    // Pure tone, a puff of breath noise at the start and a soft hiss under it, slow vibrato for flute
+    const cl = kind === "clarinet";
+    const main = osc(cl ? "square" : "sine", f, cl ? 0.35 : 0.9);
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = Math.min(f * (cl ? 5 : 3), 9000); lp.connect(g);
+    main.og.connect(lp);
+    if (!cl) osc("triangle", f * 2, kind === "recorder" ? 0.12 : 0.06).og.connect(lp);
+    if (kind === "flute") { const lfo = osc("sine", 5.2, f * 0.006); lfo.og.gain.setValueAtTime(0, t); lfo.og.gain.linearRampToValueAtTime(f * 0.006, t + 0.6); lfo.og.connect(main.o.frequency); }
+    const ns = ctx.createBufferSource(); ns.buffer = windNoise; ns.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = Math.min(f * 2, 8000); bp.Q.value = 1.5;
+    const ng = ctx.createGain(); ng.gain.setValueAtTime(cl ? 0.15 : 0.5, t); ng.gain.setTargetAtTime(cl ? 0.02 : 0.05, t + 0.02, 0.03);
+    ns.connect(bp); bp.connect(ng); ng.connect(g); ns.start(t, Math.random()); nodes.push(ns);
+    env = [[kind === "recorder" ? 0.015 : 0.04, 1], [0, 1]]; rel = 0.05 + mix.release * 0.15;
   } else if (kind === "organ") {
     [[1, .5], [2, .3], [3, .15], [4, .12], [0.5, .25]].forEach(([r, a]) => osc("sine", f * r, a).og.connect(g));
     env = [[0.008, 0.8], [0, 0.8]]; rel = 0.06 + mix.release * 0.2;
@@ -631,6 +652,7 @@ function panic() {
   beatStop();
   held.clear(); sustained.clear(); sustain = false; freeMatch = "";
   bassHeld.clear(); bassVoices.forEach(v => v.stop(0.02)); bassVoices.clear();
+  if (windVoice) windVoice.stop(0.02); windVoice = null; windNote = null;
   for (const n of sounding.keys()) if (midiOut) midiOut.send([0x80, n, 0]);
   sounding.clear();
   [...voices.keys()].forEach(synthKill);
@@ -675,6 +697,37 @@ function bassUp(note) {
 }
 const bassNotes = () => [...new Set([...bassHeld.values()].flat()
   .concat(...[...held].filter(([id]) => id[0] === "b").map(([, h]) => h.notes)))].sort((a, b) => a - b);
+
+// ---------- Wind instrument (Roland Aerophone, EWI) ----------
+// Its notes always play one melody note in the wind sound, never chords, and breath (CC2, CC11
+// or aftertouch) sets the volume while you blow. Also sent to MIDI channel 3 for the MPC.
+const windPorts = new Set();
+let windNote = null, windVoice = null, windBreath = false;
+const isWindPort = port => windPorts.has(port.id) || /aerophone|\bae-?\d|ewi|wind/i.test(port.name || "");
+function windDown(note, vel) {
+  const n = note + (+S.windOct || 0); if (n < 0 || n > 127) return;
+  // Legato: the new note takes over from the old one without a gap
+  if (windVoice) windVoice.stop(0.03);
+  if (midiOut && windNote != null) midiOut.send([0x82, windNote, 0]);
+  windNote = n;
+  if (ctx && S.internal) {
+    if (!windBreath) windBus.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
+    windVoice = makeVoice(n, vel, S.windSound === "keys" ? S.sound : S.windSound);
+  }
+  if (midiOut) midiOut.send([0x92, n, vel]);
+  render();
+}
+function windUp(note) {
+  if (windNote !== note + (+S.windOct || 0)) return; // an old note let go after a newer one began
+  if (windVoice) windVoice.stop(); windVoice = null;
+  if (midiOut) midiOut.send([0x82, windNote, 0]);
+  windNote = null; render();
+}
+function breath(v) {
+  windBreath = true;
+  if (ctx) windBus.gain.setTargetAtTime(Math.pow(v / 127, 1.3), ctx.currentTime, 0.012);
+  if (midiOut) midiOut.send([0xB2, 2, v]);
+}
 
 // Chord lock: every key in the zone is silent except the next chord's root, which plays that whole chord.
 // Keys landing right after it are the same hand, so they can't jump ahead.
@@ -762,6 +815,15 @@ function onMidi(e) {
   recent.set(sig, { t: now, port: e.target.id });
   if (recent.size > 200) recent.clear();
 
+  // Breath from a wind controller: CC2 (breath), CC11 (expression) or channel aftertouch
+  if ((type === 0xB0 && (d1 === 2 || d1 === 11)) || type === 0xD0) {
+    if (!windPorts.has(e.target.id) && !/mpk/i.test(e.target.name || "")) { windPorts.add(e.target.id); refreshStatus(); }
+    if (windPorts.has(e.target.id)) return breath(type === 0xD0 ? d1 : d2);
+  }
+  if (isWindPort(e.target) && (type === 0x90 || type === 0x80)) {
+    windPorts.add(e.target.id);
+    return type === 0x90 && d2 > 0 ? windDown(d1, d2) : windUp(d1);
+  }
   if (learnSplit && type === 0x90 && d2 > 0) { S.split = d1; learnSplit = false; save(); syncUI(); render(); return; }
   if (learnBass && type === 0x90 && d2 > 0 && ch !== 10) { S.bassSplit = d1 + 1; learnBass = false; save(); syncUI(); render(); return; }
   if (type === 0x90 && d2 > 0) { seen(d1, ch); ch === 10 ? padDown(d1 - 36, d2) : keyDown(d1, d2); }
@@ -776,6 +838,13 @@ let lo = 48, hi = 84;
 function seen(n, ch) { if (ch === 10) return; if (n < lo || n > hi) { lo = Math.min(lo, n - mod(n, 12)); hi = Math.max(hi, n); buildKeyboard(); } }
 
 let access;
+function refreshStatus() {
+  const st = document.getElementById("status"); if (!access) return;
+  const ins = [...access.inputs.values()];
+  const names = [ins.some(i => /mpk/i.test(i.name)) && "MPK", ins.some(isWindPort) && "Aerophone"].filter(Boolean);
+  st.textContent = names.length ? names.join(" + ") + " connected" : ins.length ? ins.length + " MIDI input(s)" : "No MIDI keyboard found";
+  st.className = ins.length ? "ok" : "";
+}
 async function initMidi() {
   const st = document.getElementById("status");
   if (!navigator.requestMIDIAccess) { st.textContent = "This browser has no MIDI. Use Chrome."; return; }
@@ -784,9 +853,7 @@ async function initMidi() {
   const refresh = () => {
     const ins = [...access.inputs.values()];
     ins.forEach(i => i.onmidimessage = onMidi);
-    const mpk = ins.filter(i => /mpk/i.test(i.name));
-    st.textContent = mpk.length ? "MPK connected" : ins.length ? ins.length + " MIDI input(s)" : "No MIDI keyboard found";
-    st.className = mpk.length || ins.length ? "ok" : "";
+    refreshStatus();
     const sel = document.getElementById("out"), keep = S.out;
     sel.length = 1;
     [...access.outputs.values()].forEach(o => sel.add(new Option(
@@ -803,6 +870,7 @@ let learnSplit = false, learnBass = false;
 function syncUI() {
   $("key").value = S.key; $("scale").value = S.scale; $("sound").value = S.sound;
   $("lowerMode").value = S.lowerMode; $("upperMode").value = S.upperMode;
+  $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
   $("split").textContent = learnSplit ? "Press a key…" : noteName(S.split);
   $("bassSplit").textContent = learnBass ? "Press top bass key…" : S.bassSplit ? "Up to " + noteName(S.bassSplit - 1) : "Off";
@@ -818,8 +886,11 @@ function setup() {
   KEYS.forEach((k, i) => $("key").add(new Option(k, i)));
   Object.entries(SCALES).forEach(([id, s]) => $("scale").add(new Option(s.name, id)));
   Object.entries(SOUNDS).forEach(([id, s]) => $("sound").add(new Option(s.name, id)));
+  Object.entries(WIND_SOUNDS).forEach(([id, name]) => $("windSound").add(new Option(name, id)));
   Object.entries(BEATS).forEach(([id, b]) => $("beatStyle").add(new Option(`${b.name} · ${b.bpm}`, id)));
   const bind = (id, fn) => $(id).addEventListener("change", e => { fn(e.target); save(); render(); });
+  bind("windSound", t => S.windSound = t.value);
+  bind("windOct", t => S.windOct = +t.value);
   bind("key", t => S.key = +t.value);
   bind("scale", t => S.scale = t.value);
   bind("sound", t => S.sound = t.value);
@@ -930,6 +1001,7 @@ function render() {
   $("nowHint").innerHTML = `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
     (want ? `Up next: <b>${want.chord.name}</b><span class="press">Press ${want.chord.name.match(/^[A-G][#b]?/) ? want.chord.name.match(/^[A-G][#b]?/)[0] : pcName(want.chord.rootPc)}</span>${playsFromKeys(want.chord) ? "" : " (turn on Sloppy mode or Chord lock)"}<br>${after ? "then " + after.chord.name : ""}`
       : next.length ? "Try next: " + next.map(d => chords[d].name).join(" · ") : "Play a chord to see what fits next") +
+    (windNote != null ? `<br>Aerophone: <b>${noteName(windNote)}</b>` : "") +
     (bassNotes().length ? `<br>${S.bassSound === "piano" ? "Left hand" : "Bass"}: ${bassNotes().map(noteName).join(" ")}` : "");
 
   // Keyboard highlights; the green box marks the keys for the next chord

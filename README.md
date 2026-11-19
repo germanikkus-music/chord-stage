@@ -13,6 +13,16 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - Set list with per-song settings; switch with ◀ ▶, arrow keys, Page Up/Down (foot pedal) or knob 8.
 - Built-in sounds, or send MIDI to MPC 3 (via the IAC Driver) or the MPK's 5-pin MIDI out.
 
+## Aerophone (wind)
+
+Chord Stage can use a Roland Aerophone mini (or another wind controller) for the melody while the MPK plays chords and the beat runs.
+
+1. Pair it on the Mac: open **Audio MIDI Setup**, choose **Window → Show MIDI Studio**, click the **Bluetooth** button and connect the Aerophone. Chrome then sees it like any other MIDI input.
+2. Turn the Aerophone's own speaker down so only Chord Stage sounds.
+3. Pick a voice under **Wind (Aerophone)**: Recorder, Flute, Clarinet, or Same as Sound. Use **Octave up/down** if it sits too high or low.
+
+Its notes always play one note at a time in the wind voice. They never trigger chords or move the progression. Breath sets the volume while you blow; Chord Stage reads breath from CC2, CC11 or aftertouch. The app recognises it by name ("Aerophone", "AE-01") or as soon as it sends breath. The status shows "MPK + Aerophone connected". If you send MIDI out, the wind part goes on channel 3, so the MPC can give it its own track.
+
 ## Songs
 
 `songs/` holds ready-made charts. Import them with Edit set list → **+ MPC progressions** (or drop the file on the page).
