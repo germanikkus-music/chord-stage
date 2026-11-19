@@ -148,11 +148,13 @@
 
   .progbox { margin-top: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
   .progin { display: flex; align-items: center; gap: 8px; }
-  .progin input { flex: 1; min-width: 0; font: 16px ui-monospace, Menlo, monospace; color: var(--text);
+  #prog { display: none; width: 100%; margin-top: 10px; font: 16px ui-monospace, Menlo, monospace; color: var(--text);
     background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-  .progin input:focus { outline: none; border-color: var(--accent); }
-  #progStrip { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; }
-  #progStrip:not(:empty) { margin-top: 10px; }
+  .progbox.editing #prog, .progbox.empty #prog { display: block; }
+  .progbox.editing #progEdit { border-color: var(--accent); color: var(--accent); }
+  .progbox.empty #progEdit { display: none; }
+  #prog:focus { outline: none; border-color: var(--accent); }
+  #progStrip { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; }
   .chip { display: flex; flex-direction: column; align-items: center; min-width: 52px; padding: 6px 10px;
     border: 2px solid var(--line); border-bottom: 3px solid var(--fn); font-weight: 700; font-size: 18px; }
   .chip small { font-size: 11px; color: var(--dim); font-weight: 600; }
@@ -257,14 +259,16 @@
 <div class="progbox">
   <div class="progin">
     <label for="prog">Progression</label>
-    <input id="prog" spellcheck="false" autocomplete="off"
-      placeholder="[Verse] I V vi IV  [Chorus] IV I V vi   — or chord names: G D Em C">
+    <div id="progStrip"></div>
+    <button id="progEdit" title="Show the progression as text to change it">✎ Edit</button>
     <button id="progBack" title="Back one chord (↑)">◀</button>
     <button id="progRestart" title="Back to the first chord">Restart</button>
     <button id="progFwd" title="Skip ahead one chord (↓)">▶</button>
     <label class="toggle" title="Any chord key on the next chord's root plays that exact chord from the progression"><input type="checkbox" id="sloppy"> Sloppy mode</label>
   </div>
-  <div id="progStrip"></div>
+  <!-- The text (with MPC voicings it gets long) only shows while editing, or when there is no progression yet -->
+  <input id="prog" spellcheck="false" autocomplete="off"
+    placeholder="[Verse] I V vi IV  [Chorus] IV I V vi   — or chord names: G D Em C">
 </div>
 
 <div class="now">
@@ -1005,6 +1009,7 @@ function syncUI() {
   $("bassSound").value = S.bassSound; $("bassStyle").value = S.bassStyle;
   $("bassSound").hidden = $("bassStyle").hidden = !S.bassSplit;
   $("prog").value = S.prog;
+  document.querySelector(".progbox").classList.toggle("empty", !S.prog);
   $("sloppy").checked = S.sloppy;
   $("beatStyle").value = S.beatStyle; $("bpm").value = S.bpm; $("beatLevel").value = S.beatLevel;
   $("beatAuto").checked = S.beatAuto; $("beatFills").checked = S.beatFills; $("beatMidi").checked = S.beatMidi;
@@ -1057,8 +1062,9 @@ function setup() {
     if (e.key === "ArrowDown") { e.preventDefault(); stepProg(1); }
     if (e.key === "ArrowUp") { e.preventDefault(); stepProg(-1); }
   });
-  $("prog").addEventListener("change", e => { S.prog = e.target.value.trim(); progPos = 0; save(); render(); });
-  $("prog").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+  $("prog").addEventListener("change", e => { S.prog = e.target.value.trim(); progPos = 0; save(); document.querySelector(".progbox").classList.toggle("empty", !S.prog); render(); });
+  $("prog").addEventListener("keydown", e => { if (e.key === "Enter") { e.target.blur(); document.querySelector(".progbox").classList.remove("editing"); } });
+  $("progEdit").onclick = () => { const box = document.querySelector(".progbox"), on = box.classList.toggle("editing"); if (on) $("prog").focus(); };
   $("progBack").onclick = () => stepProg(-1);
   $("progFwd").onclick = () => stepProg(1);
   $("progRestart").onclick = () => { progPos = 0; render(); };
