@@ -21,6 +21,15 @@ Chord Stage can use a Roland Aerophone mini (or another wind controller) for the
 2. Turn the Aerophone's own speaker down so only Chord Stage sounds.
 3. Pick a voice under **Wind (Aerophone)**: Recorder, Flute, Clarinet, or Same as Sound. Use **Octave up/down** if it sits too high or low.
 
+When the Aerophone is connected, the on-screen keyboard switches to **Aerophone fingering** diagrams, which follow Roland's AE-01 chart. There's a button to switch back, and one on the keyboard to switch over by hand.
+- **Now:** the notes of the chord that's playing, each drawn as a fingering. The root has a green border.
+- **Next:** the next chord's notes, dimmed.
+- **You're playing:** the note you're blowing. It glows green when it's in the chord and gets a red border for a passing note.
+
+Filled keys mean press. The gold small keys are the side keys: the upper one makes a note sharp, the lower one makes it flat.
+
+Connect it by **USB**. Bluetooth MIDI kept failing on this Mac. Quit Chrome before plugging it in, and untick **Discover USB devices** on `chrome://inspect`. Otherwise Chrome (or a running `adb`) grabs the Aerophone and no MIDI port appears.
+
 Its notes always play one note at a time in the wind voice. They never trigger chords or move the progression. Breath sets the volume while you blow; Chord Stage reads breath from CC2, CC11 or aftertouch. The app recognises it by name ("Aerophone", "AE-01") or as soon as it sends breath. The status shows "MPK + Aerophone connected". If you send MIDI out, the wind part goes on channel 3, so the MPC can give it its own track.
 
 ## Songs

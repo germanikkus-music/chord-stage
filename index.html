@@ -64,6 +64,21 @@
   .kbwrap { margin-top: 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
   .kbhead { display: flex; justify-content: space-between; color: var(--dim); font-size: 12px; margin-bottom: 8px; }
   #kb { position: relative; height: 130px; }
+  .kbhead button { font-size: 12px; padding: 3px 9px; margin-left: 8px; }
+  #rec { display: flex; gap: 22px; align-items: stretch; flex-wrap: wrap; }
+  #rec .grp { display: flex; flex-direction: column; gap: 6px; }
+  #rec .ttl { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  #rec .ttl b { color: var(--text); font-size: 18px; text-transform: none; letter-spacing: 0; margin-left: 4px; }
+  #rec .row2 { display: flex; gap: 8px; }
+  .fing { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 6px 4px; border: 2px solid var(--line);
+    border-radius: 10px; background: var(--panel2); min-width: 62px; }
+  .fing svg { width: 46px; height: 160px; }
+  .fing .nm { font-size: 20px; font-weight: 800; line-height: 1.1; }
+  .fing .rl { font-size: 11px; color: var(--dim); }
+  .fing.root { border-color: #4ade80; }
+  .fing.hit { background: #24432f; border-color: #4ade80; box-shadow: 0 0 14px #4ade80; }
+  .fing.off { border-color: #ff6b6b; }
+  .grp.next .fing { opacity: .6; transform: scale(.85); transform-origin: top left; margin-right: -10px; }
   .wk, .bk { position: absolute; top: 0; border-radius: 0 0 6px 6px; }
   .wk { height: 130px; background: #d9dde6; border: 1px solid #0d0f14; }
   .bk { height: 80px; background: #23283a; border: 1px solid #0d0f14; z-index: 2; }
@@ -245,8 +260,12 @@
 </div>
 
 <div class="kbwrap">
-  <div class="kbhead"><span>Gold underline = bass keys · blue underline = chord keys · <b style="color:#4ade80">pulsing green L = press this for the next chord</b> (dashed = same note, other octave) · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
+  <div class="kbhead"><span><button id="showRec" title="Show Aerophone fingerings instead of the keyboard">Aerophone fingering</button> Gold underline = bass keys · blue underline = chord keys · <b style="color:#4ade80">pulsing green L = press this for the next chord</b> (dashed = same note, other octave) · grey keys = outside the key (get corrected)</span><span id="range"></span></div>
   <div id="kb"></div>
+</div>
+<div class="kbwrap" id="recWrap" hidden>
+  <div class="kbhead"><span>Aerophone mini fingering · <b>filled = press</b> · <b style="color:#f2c14e">gold</b> = sharp (upper) / flat (lower) side key · green border = the chord's root · lights up green when you play a chord note</span><span><button id="showKb">Show keyboard</button></span></div>
+  <div id="rec"></div>
 </div>
 
 <div class="knobs" id="knobs"></div>
@@ -614,6 +633,7 @@ function press(id, notes, vel, chord, tile, fromProgPad) {
   if (chord && notes.length && beat.armed) beatStart();
   if (chord && chord.degree >= 0) lastChord = chord.degree;
   if (chord && id[0] === "k") lastChordKey = +id.slice(1);
+  if (chord && notes.length) shownChord = chord;
   if (chord && !fromProgPad) progressHit(chord);
   render();
 }
@@ -697,6 +717,48 @@ function bassUp(note) {
 }
 const bassNotes = () => [...new Set([...bassHeld.values()].flat()
   .concat(...[...held].filter(([id]) => id[0] === "b").map(([, h]) => h.notes)))].sort((a, b) => a - b);
+
+// ---------- Aerophone mini fingering (from Roland's AE-01 chart) ----------
+// Natural notes close keys from the top down: C = all 7, D = 6 ... B = top key only.
+// Sharps add the upper side key to the note below; flats add the lower side key to the note above.
+const NAT_KEYS = { 0: 7, 2: 6, 4: 5, 5: 4, 7: 3, 9: 2, 11: 1 };
+function fingering(pc, flat) {
+  pc = mod(pc, 12);
+  if (pc in NAT_KEYS) return { keys: NAT_KEYS[pc] };
+  return flat ? { keys: NAT_KEYS[mod(pc + 1, 12)], flat: true } : { keys: NAT_KEYS[mod(pc - 1, 12)], sharp: true };
+}
+const FKEYS = [[20, 14], [20, 33], [25, 50], [25, 92], [26, 110], [24, 128], [15, 146]]; // 7 main keys, top to bottom
+function fingerSvg(f) {
+  const on = "var(--text)", off = "none", sk = "#f2c14e";
+  return `<svg viewBox="0 0 46 160"><rect x="7" y="3" width="32" height="155" rx="5" fill="#3a6ea5" opacity=".55"/>` +
+    FKEYS.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="7.5" fill="${i < f.keys ? on : off}" stroke="var(--text)" stroke-width="1.5"/>`).join("") +
+    `<circle cx="31" cy="66" r="4.5" fill="${f.sharp ? sk : off}" stroke="${f.sharp ? sk : "var(--dim)"}" stroke-width="1.3"/>` +
+    `<circle cx="29" cy="77" r="4.5" fill="${f.flat ? sk : off}" stroke="${f.flat ? sk : "var(--dim)"}" stroke-width="1.3"/></svg>`;
+}
+const ROLE = { 0: "root", 1: "b9", 2: "9", 3: "3rd", 4: "3rd", 5: "4th", 6: "b5", 7: "5th", 8: "#5", 9: "6th", 10: "7th", 11: "7th" };
+function chordCards(chord, playPc) {
+  const pcs = [...new Set(chord.tones.map(t => t % 12))];
+  return pcs.map(iv => {
+    const pc = mod(chord.rootPc + iv, 12), nm = pcName(pc), f = fingering(pc, /b/.test(nm));
+    return `<div class="fing${iv === 0 ? " root" : ""}${pc === playPc ? " hit" : ""}">${fingerSvg(f)}<div class="nm">${nm}</div><div class="rl">${ROLE[iv]}</div></div>`;
+  }).join("");
+}
+let shownChord = null; // the chord the band is on now, for the fingering view
+const recView = () => S.recView === true || (S.recView == null && windPorts.size > 0);
+function renderRec(want) {
+  $("recWrap").hidden = !recView(); document.querySelector(".kbwrap").hidden = recView();
+  if (!recView()) return;
+  const playPc = windNote != null ? mod(windNote, 12) : -1;
+  const now = shownChord;
+  let h = "";
+  if (now) h += `<div class="grp"><div class="ttl">Now<b>${now.name}</b></div><div class="row2">${chordCards(now, playPc)}</div></div>`;
+  if (want && (!now || want.chord.name !== now.name)) h += `<div class="grp next"><div class="ttl">Next<b>${want.chord.name}</b></div><div class="row2">${chordCards(want.chord, -1)}</div></div>`;
+  if (windNote != null) {
+    const nm = pcName(playPc), fits = now && now.tones.some(t => mod(now.rootPc + t, 12) === playPc);
+    h += `<div class="grp"><div class="ttl">You're playing</div><div class="row2"><div class="fing ${now ? (fits ? "hit" : "off") : ""}">${fingerSvg(fingering(playPc, /b/.test(nm)))}<div class="nm">${nm}</div><div class="rl">${now ? (fits ? "in the chord" : "passing note") : noteName(windNote)}</div></div></div></div>`;
+  }
+  $("rec").innerHTML = h || `<div class="ttl">Play a chord (or start the progression) and its notes show up here as Aerophone fingerings.</div>`;
+}
 
 // ---------- Wind instrument (Roland Aerophone, EWI) ----------
 // Its notes always play one melody note in the wind sound, never chords, and breath (CC2, CC11
@@ -817,7 +879,7 @@ function onMidi(e) {
 
   // Breath from a wind controller: CC2 (breath), CC11 (expression) or channel aftertouch
   if ((type === 0xB0 && (d1 === 2 || d1 === 11)) || type === 0xD0) {
-    if (!windPorts.has(e.target.id) && !/mpk/i.test(e.target.name || "")) { windPorts.add(e.target.id); refreshStatus(); }
+    if (!windPorts.has(e.target.id) && !/mpk/i.test(e.target.name || "")) { windPorts.add(e.target.id); refreshStatus(); render(); }
     if (windPorts.has(e.target.id)) return breath(type === 0xD0 ? d1 : d2);
   }
   if (isWindPort(e.target) && (type === 0x90 || type === 0x80)) {
@@ -852,8 +914,9 @@ async function initMidi() {
   catch { st.textContent = "MIDI blocked. Allow MIDI for this page."; return; }
   const refresh = () => {
     const ins = [...access.inputs.values()];
-    ins.forEach(i => i.onmidimessage = onMidi);
+    ins.forEach(i => { i.onmidimessage = onMidi; if (isWindPort(i)) windPorts.add(i.id); });
     refreshStatus();
+    render();
     const sel = document.getElementById("out"), keep = S.out;
     sel.length = 1;
     [...access.outputs.values()].forEach(o => sel.add(new Option(
@@ -890,6 +953,8 @@ function setup() {
   Object.entries(BEATS).forEach(([id, b]) => $("beatStyle").add(new Option(`${b.name} · ${b.bpm}`, id)));
   const bind = (id, fn) => $(id).addEventListener("change", e => { fn(e.target); save(); render(); });
   bind("windSound", t => S.windSound = t.value);
+  $("showRec").onclick = () => { S.recView = true; save(); render(); };
+  $("showKb").onclick = () => { S.recView = false; save(); render(); };
   bind("windOct", t => S.windOct = +t.value);
   bind("key", t => S.key = +t.value);
   bind("scale", t => S.scale = t.value);
@@ -1025,6 +1090,7 @@ function render() {
     el.classList.toggle("press", held.has("k" + n) || held.has("b" + n) || bassHeld.has(n));
     el.classList.toggle("sound", sounding.has(n));
   });
+  renderRec(want);
   renderKnobs();
 }
 function renderKnobs() {
