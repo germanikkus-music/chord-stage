@@ -766,12 +766,18 @@ function renderRec(want) {
 // Its notes always play one melody note in the wind sound, never chords, and breath (CC2, CC11
 // or aftertouch) sets the volume while you blow. Also sent to MIDI channel 3 for the MPC.
 const windPorts = new Set();
-let windNote = null, windVoice = null, windBreath = false, windLearn = false;
+let windNote = null, windVoice = null, windBreath = false, windLearn = false, windRaw = null, learnTimer = 0;
 // windCal: how far the instrument's transpose is off C (it sends C# for a C fingering -> 1)
 const windPitch = note => note - (S.windCal || 0) + (+S.windOct || 0);
 const isWindPort = port => windPorts.has(port.id) || /aerophone|\bae-?\d|ewi|wind/i.test(port.name || "");
 function windDown(note, vel) {
-  if (windLearn) { const d = mod(note, 12); S.windCal = d > 6 ? d - 12 : d; windLearn = false; save(); syncUI(); }
+  // Tune learns from a note that's held, not the quick "all keys open" note the
+  // instrument sends while the fingers are still landing
+  windRaw = note; clearTimeout(learnTimer);
+  if (windLearn) learnTimer = setTimeout(() => {
+    if (!windLearn || windRaw !== note) return;
+    const d = mod(note, 12); S.windCal = d > 6 ? d - 12 : d; windLearn = false; save(); syncUI(); render();
+  }, 250);
   const n = windPitch(note); if (n < 0 || n > 127) return;
   // Legato: the new note takes over from the old one without a gap
   if (windVoice) windVoice.stop(0.03);
