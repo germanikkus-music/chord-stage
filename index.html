@@ -1223,6 +1223,13 @@ function playsFromKeys(chord) {
   const dia = keyChords()[degreeOf(chord.rootPc + 60)];
   return dia.rootPc === chord.rootPc && sameSet(dia.tones.slice(1, 3), chord.tones.slice(1, 3));
 }
+// What plays this chord tile: the MPK pad on piano, the fingering or note to blow on the horn
+function tileHow(c, i) {
+  if (S.inst !== "horn") return `PAD ${i + 1}`;
+  if (S.windChords === "fingers") return `FINGER ${SHARP[i === 7 ? fingerFor(c) : NATS[i]]}`;
+  if (S.windChords === "off") return "";
+  return `BLOW ${rootLabel(c)}`;
+}
 function render() {
   const chords = keyChords(), grid = $("grid");
   const lit = new Set([...held.values()].filter(h => h.chord).map(h => h.tile));
@@ -1241,7 +1248,7 @@ function render() {
     t.className = "tile" + (lit.has(i) ? " on" : "") + (!high && next.includes(i) && !lit.has(i) ? " next" : "");
     t.style.setProperty("--fn", `var(${FUNC_VAR[c.func]})`);
     t.innerHTML = `<div class="bar"></div><div class="num">${c.num}</div><div class="name">${c.name}</div>` +
-      `<div class="pad">PAD ${i + 1}${high ? (want ? " · NEXT CHORD" : " · HIGH") : ""}</div>`;
+      `<div class="pad">${[tileHow(c, i), high ? (want ? "NEXT CHORD" : "HIGH") : ""].filter(Boolean).join(" · ")}</div>`;
   });
 
   $("progStrip").innerHTML = steps.map((s, i) => (s.label ? `<span class="sec">${esc(s.label)}</span>` : "") +
@@ -1258,7 +1265,7 @@ function render() {
   else { $("nowName").textContent = lastChordName || "–"; $("nowNum").textContent = ""; }
   $("nowName").style.opacity = notes.length ? 1 : 0.35;
   $("nowHint").innerHTML = `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
-    (want ? `Up next: <b>${want.chord.name}</b>${S.inst === "horn" && S.windChords === "fingers" ? `<span class="press">Finger ${SHARP[fingerFor(want.chord)]}</span>` : `<span class="press">Press ${want.chord.name.match(/^[A-G][#b]?/) ? want.chord.name.match(/^[A-G][#b]?/)[0] : pcName(want.chord.rootPc)}</span>${playsFromKeys(want.chord) ? "" : " (turn on Sloppy mode or Chord lock)"}`}<br>${after ? "then " + after.chord.name : ""}`
+    (want ? `Up next: <b>${want.chord.name}</b>${S.inst === "horn" ? (S.windChords === "fingers" ? `<span class="press">Finger ${SHARP[fingerFor(want.chord)]}</span>` : S.windChords === "off" ? "" : `<span class="press">Blow ${rootLabel(want.chord)}</span>`) : `<span class="press">Press ${want.chord.name.match(/^[A-G][#b]?/) ? want.chord.name.match(/^[A-G][#b]?/)[0] : pcName(want.chord.rootPc)}</span>${playsFromKeys(want.chord) ? "" : " (turn on Sloppy mode or Chord lock)"}`}<br>${after ? "then " + after.chord.name : ""}`
       : next.length ? "Try next: " + next.map(d => chords[d].name).join(" · ") : "Play a chord to see what fits next") +
     (windNote != null ? `<br>Aerophone: <b>${noteName(windNote)}</b>` : "") +
     (bassNotes().length ? `<br>${S.bassSound === "piano" ? "Left hand" : "Bass"}: ${bassNotes().map(noteName).join(" ")}` : "");
