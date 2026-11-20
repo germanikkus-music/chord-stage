@@ -894,6 +894,9 @@ function fcStop(t = 0.04) {
   if (midiOut) fcNotes.forEach(m => midiOut.send([0x82, m, 0])); fcNotes = [];
 }
 function fingerChordDown(n, vel) {
+  // All keys open (C#5) is what the Aerophone sends between fingerings and as breath stops,
+  // so it never plays a chord here
+  if (n - (+S.windOct || 0) === 73) { clearTimeout(fcTimer); return; }
   windNote = n; clearTimeout(fcTimer);
   // Wait a moment so the quick notes sent while fingers are still landing don't sound
   fcTimer = setTimeout(() => {
