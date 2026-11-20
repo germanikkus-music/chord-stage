@@ -215,6 +215,9 @@
   <div class="ctl horn-only"><label>Octave</label><span class="pair"><select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select></span></div>
   <div class="ctl horn-only"><label>Chords</label><span class="pair"><select id="windChords" title="Blowing the next chord's root note moves the progression on"><option value="silent">Root moves chords (silent)</option><option value="play">Root moves + plays chords</option><option value="fingers">One note = one chord (C = key)</option><option value="off">Melody only</option></select>
     <button id="windTune" title="Click, then finger C on the Aerophone and blow. Fixes an instrument whose transpose is set off C.">Tune</button></span></div>
+  <div class="ctl piano-only"><label>Arp</label><span class="pair"><select id="arp" title="Chords play one note at a time, in time with the Tempo"><option value="off">Off</option><option value="up">Up</option><option value="down">Down</option><option value="updown">Up &amp; down</option><option value="random">Random</option></select>
+    <select id="arpRate"><option value="2">1/8</option><option value="3">1/8 triplet</option><option value="4">1/16</option></select>
+    <select id="arpOct"><option value="1">1 octave</option><option value="2">2 octaves</option></select></span></div>
   <div class="ctl piano-only"><label>Split at</label><button id="split">C4</button></div>
   <div class="ctl piano-only"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
   <div class="ctl piano-only"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="bass" checked> Low root under chords</label></div>
@@ -345,7 +348,7 @@ const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
   windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
-  beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
+  arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 if (typeof S.windChords === "boolean") S.windChords = S.windChords ? "silent" : "off"; // was a checkbox
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -695,8 +698,14 @@ let lastChord = null, lastChordName = "", lastChordKey = null;
 // tile: which chord tile (0-7) lights up while held
 function press(id, notes, vel, chord, tile, fromProgPad) {
   release(id);
-  held.set(id, { notes, chord, tile });
-  notes.forEach(n => outOn(n, vel));
+  if (id[0] === "k") { if (chord && notes.length > 1) repKeys.set(+id.slice(1), { notes: notes.slice().sort((a, b) => a - b), i: 0, chord, tile }); else repKeys.delete(+id.slice(1)); }
+  if (S.arp !== "off" && chord && notes.length > 1 && "kpm".includes(id[0])) {
+    held.set(id, { notes: [], chord, tile, arpNotes: notes });
+    arpStart(id, notes, vel);
+  } else {
+    held.set(id, { notes, chord, tile });
+    notes.forEach(n => outOn(n, vel));
+  }
   if (chord && notes.length && beat.armed) beatStart();
   if (chord && chord.degree >= 0) lastChord = chord.degree;
   if (chord && id[0] === "k") lastChordKey = +id.slice(1);
@@ -730,6 +739,8 @@ function stepProg(d) {
   progPos = mod(progPos + d, n); render();
 }
 function release(id) {
+  if (id[0] === "k") keyUpAt.set(+id.slice(1), performance.now());
+  arpStop(id);
   const h = held.get(id); if (!h) return;
   held.delete(id);
   h.notes.forEach(outOff);
@@ -737,6 +748,7 @@ function release(id) {
 }
 function panic() {
   beatStop();
+  [...arps.keys()].forEach(arpStop);
   held.clear(); sustained.clear(); sustain = false; freeMatch = "";
   bassHeld.clear(); bassVoices.forEach(v => v.stop(0.02)); bassVoices.clear();
   if (windVoice) windVoice.stop(0.02); windVoice = null; windNote = null;
@@ -985,8 +997,64 @@ function lockDown(note, vel) {
   press("k" + note, voice(chord, note), vel, chord, chord.degree, true);
 }
 
+// ---------- Arpeggiator ----------
+// Chords play one note at a time, in time with the Tempo. A low root (an octave or more under
+// the rest) holds underneath as the bass instead of joining the pattern.
+const arps = new Map(); // held id -> running arp
+function arpPattern(notes) {
+  let up = notes.slice().sort((a, b) => a - b);
+  if (+S.arpOct === 2) up = up.concat(up.map(n => n + 12));
+  if (S.arp === "down") return up.reverse();
+  if (S.arp === "updown") return up.length > 2 ? up.concat(up.slice(1, -1).reverse()) : up;
+  return up;
+}
+function arpStart(id, notes, vel) {
+  const sorted = notes.slice().sort((a, b) => a - b);
+  const bass = sorted.length > 2 && sorted[1] - sorted[0] >= 12 ? sorted.shift() : null;
+  const a = { seq: arpPattern(sorted), i: 0, cur: null, bass, vel, timer: 0, gate: 0 };
+  arps.set(id, a);
+  if (bass != null) outOn(bass, vel);
+  const stepMs = () => 60000 / S.bpm / (+S.arpRate || 4);
+  const tick = () => {
+    if (arps.get(id) !== a) return;
+    if (a.cur != null) outOff(a.cur);
+    const n = S.arp === "random" ? a.seq[Math.floor(Math.random() * a.seq.length)] : a.seq[a.i++ % a.seq.length];
+    a.cur = n; outOn(n, a.vel);
+    const ms = stepMs();
+    clearTimeout(a.gate); a.gate = setTimeout(() => { if (arps.get(id) === a && a.cur === n) { outOff(n); a.cur = null; } }, ms * 0.85);
+    a.timer = setTimeout(tick, ms);
+  };
+  tick();
+  // With the beat playing, line the next note up with its grid
+  if (beat.running && ctx) {
+    const ms = stepMs(), until = (beat.next - ctx.currentTime) * 1000;
+    clearTimeout(a.timer); a.timer = setTimeout(tick, ((until % ms) + ms) % ms || ms);
+  }
+}
+function arpStop(id) {
+  const a = arps.get(id); if (!a) return;
+  arps.delete(id); clearTimeout(a.timer); clearTimeout(a.gate);
+  if (a.cur != null) outOff(a.cur);
+  if (a.bass != null) outOff(a.bass);
+}
+
+// A keyboard's own arpeggiator (the MPK's ARP button, for one) just re-presses the key you hold,
+// fast. Re-pressed chord keys step through that chord's notes instead of striking it again.
+const repKeys = new Map(), keyUpAt = new Map(), keyDownAt = new Map();
+function repeatTick(note, vel) {
+  const r = repKeys.get(note), up = keyUpAt.get(note), down = keyDownAt.get(note), now = performance.now();
+  if (!r || up == null || down == null || now - up > 100 || up - down > 200) return false;
+  keyDownAt.set(note, now);
+  const upper = r.notes.length > 2 && r.notes[1] - r.notes[0] >= 12 ? r.notes.slice(1) : r.notes; // leave the low root out
+  const seq = S.arp === "off" ? upper : arpPattern(upper);
+  const n = S.arp === "random" ? seq[Math.floor(Math.random() * seq.length)] : seq[++r.i % seq.length];
+  release("k" + note); held.set("k" + note, { notes: [n], chord: r.chord, tile: r.tile }); outOn(n, vel); render();
+  return true;
+}
 function keyDown(note, vel) {
   if (isBass(note)) return bassDown(note, vel);
+  if (repeatTick(note, vel)) return;
+  keyDownAt.set(note, performance.now());
   const mode = note < S.split ? S.lowerMode : S.upperMode;
   if (mode === "lock") return lockDown(note, vel);
   if (mode === "chords") {
@@ -1120,6 +1188,7 @@ function syncUI() {
   document.querySelectorAll("#start [data-inst]").forEach(b => b.classList.toggle("was", b.dataset.inst === S.inst));
   $("windTune").textContent = windLearn ? "Finger C and blow…" : S.windCal ? "Tuned " + (S.windCal > 0 ? "+" : "") + S.windCal : "Tune";
   $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
+  $("arp").value = S.arp; $("arpRate").value = S.arpRate; $("arpOct").value = S.arpOct;
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
   $("split").textContent = learnSplit ? "Press a key…" : noteName(S.split);
   $("bassSplit").textContent = learnBass ? "Press top bass key…" : S.bassSplit ? "Up to " + noteName(S.bassSplit - 1) : "Off";
@@ -1151,6 +1220,9 @@ function setup() {
   bind("lowerMode", t => S.lowerMode = t.value);
   bind("upperMode", t => S.upperMode = t.value);
   bind("sevenths", t => S.sevenths = t.checked);
+  bind("arp", t => S.arp = t.value);
+  bind("arpRate", t => S.arpRate = +t.value);
+  bind("arpOct", t => S.arpOct = +t.value);
   bind("bass", t => S.bass = t.checked);
   bind("internal", t => { S.internal = t.checked;
     if (!t.checked) { [...voices.keys()].forEach(synthKill); bassVoices.forEach(v => v.stop(0.02)); bassVoices.clear(); } });
@@ -1474,7 +1546,7 @@ function showBeat(pos) {
 
 // ---------- Set list ----------
 const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog",
-  "bassSplit", "bassSound", "bassStyle", "sloppy",
+  "bassSplit", "bassSound", "bassStyle", "sloppy", "arp", "arpRate", "arpOct",
   "beatStyle", "bpm", "beatAuto", "beatFills"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];

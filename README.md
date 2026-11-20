@@ -13,6 +13,12 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - Set list with per-song settings; switch with ◀ ▶, arrow keys, Page Up/Down (foot pedal) or knob 8.
 - Built-in sounds, or send MIDI to MPC 3 (via the IAC Driver) or the MPK's 5-pin MIDI out.
 
+## Arp
+
+**Arp** (Piano) plays every chord one note at a time, in time with the **Tempo**, from any keyboard. Choose Up, Down, Up & down or Random; 1/8, 1/8 triplet or 1/16; and 1 or 2 octaves. A low root under the chord holds as the bass while the rest arpeggiates. With the beat playing, the notes line up with the drums. Arp settings are saved with each song.
+
+A keyboard's own arpeggiator works too. The MPK's **ARP** button just re-presses the key you hold, fast, so Chord Stage plays the whole chord on the first hit and then steps through its notes on each repeat. The speed comes from the MPK's tempo (tap tempo on the MPK), not Chord Stage's.
+
 ## Aerophone (wind)
 
 When Chord Stage opens it asks **Piano** or **Horn**. Each one shows only its own controls. Piano has the key modes, split, bass keys and the on-screen keyboard. Horn has the horn sound, octave, chord-follow, Tune and the fingering view. The 🎹/🎺 button next to Guide switches between them.
