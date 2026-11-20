@@ -801,16 +801,23 @@ const sounding = new Map();  // output note -> count (for display + MIDI out)
 function outOn(n, vel) {
   if (n < 0 || n > 127) return;
   recNote(true, n, vel);
-  sustained.delete(n);
+  // A note the pedal is still holding gets struck again: that held copy is let go first, or it
+  // would never be released (the pedal no longer knows about it) and ring forever
+  if (sustained.delete(n)) {
+    const h = sounding.get(n) || 0;
+    if (h > 1) sounding.set(n, h - 1); else sounding.delete(n);
+    synthOff(n); if (midiOut && h <= 1) midiOut.send([0x80, n, 0]);
+  }
   const c = sounding.get(n) || 0;
   sounding.set(n, c + 1);
   synthOn(n, vel);
   if (midiOut) { if (c) midiOut.send([0x80, n, 0]); midiOut.send([0x90, n, vel]); }
 }
-function outOff(n) {
+// force: let go even with the pedal down (the loop's own notes; your pedal shouldn't pile them up)
+function outOff(n, force) {
   const c = sounding.get(n); if (!c) return;
   recNote(false, n, 0);
-  if (sustain && c === 1) { sustained.add(n); return; }
+  if (sustain && c === 1 && !force) { sustained.add(n); return; }
   if (c > 1) { sounding.set(n, c - 1); synthOff(n); return; }
   sounding.delete(n); synthOff(n);
   if (midiOut) midiOut.send([0x80, n, 0]);
@@ -1504,7 +1511,9 @@ function setup() {
 // Records the notes Chord Stage plays (chords, arp, strum, melody) and loops them, so you can play
 // over yourself. With the beat running it records whole bars from a downbeat, so the loop stays in
 // time with the drums. The progression display follows the loop.
-const loop = { state: "empty", events: [], len: 0, recStart: null, start: 0, timer: 0, last: 0, on: new Set(), bars: 0, pass: 0 };
+const loop = { state: "empty", events: [], len: 0, recStart: null, start: 0, timer: 0, last: 0, on: new Map(), bars: 0, pass: 0 };
+// The loop plays a bit softer than you, so what you play on top stands out
+const LOOP_LEVEL = 0.7;
 let loopPlaying = false; // notes sent by the loop itself, so they don't get recorded again
 const barMs = () => 60000 / S.bpm / 4 * stepsOf(BEATS[S.beatStyle] || BEATS.neosoul);
 function nextDownbeat() { // performance.now() time of the next bar 1 of the running beat
@@ -1552,14 +1561,16 @@ function loopPlay(at) {
 }
 function loopSend(e) {
   loopPlaying = true;
-  if (e.on) { outOn(e.n, e.vel); loop.on.add(e.n); } else if (loop.on.has(e.n)) { outOff(e.n); loop.on.delete(e.n); }
+  // Counted per note, so two of the same note in the loop each get let go
+  if (e.on) { outOn(e.n, Math.max(1, Math.round(e.vel * LOOP_LEVEL))); loop.on.set(e.n, (loop.on.get(e.n) || 0) + 1); }
+  else if (loop.on.get(e.n)) { outOff(e.n, true); loop.on.get(e.n) > 1 ? loop.on.set(e.n, loop.on.get(e.n) - 1) : loop.on.delete(e.n); }
   loopPlaying = false;
 }
 function loopTick() {
   const el = performance.now() - loop.start; if (el < 0) return;
   const pass = Math.floor(el / loop.len), pos = el - pass * loop.len;
   if (pass !== loop.pass) { // came round: let go of anything still sounding from the last pass
-    [...loop.on].forEach(n => loopSend({ on: false, n })); loop.pass = pass; loop.last = -1; loopUI();
+    loopAllOff(); loop.pass = pass; loop.last = -1; loopUI();
   }
   let moved = false;
   for (const e of loop.events) {
@@ -1570,9 +1581,10 @@ function loopTick() {
   loop.last = pos;
   if (moved) render();
 }
+function loopAllOff() { [...loop.on].forEach(([n, c]) => { for (let i = 0; i < c; i++) loopSend({ on: false, n }); }); }
 function loopStop() {
   clearInterval(loop.timer);
-  [...loop.on].forEach(n => loopSend({ on: false, n }));
+  loopAllOff();
   if (loop.state === "play") loop.state = "stopped";
 }
 function loopClear() { loopStop(); loop.events = []; loop.len = 0; loop.state = "empty"; loopUI(); }
