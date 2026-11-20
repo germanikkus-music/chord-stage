@@ -13,6 +13,19 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - Set list with per-song settings; switch with ◀ ▶, arrow keys, Page Up/Down (foot pedal) or knob 8.
 - Built-in sounds, or send MIDI to MPC 3 (via the IAC Driver) or the MPK's 5-pin MIDI out.
 
+## Record & loop
+
+**⏺ Rec** (or the R key) records what Chord Stage plays: chords, arp, strum and melody. Press it again to stop, and the loop starts playing so you can solo over yourself. **▶ Loop** (L) starts and stops it, **✕ Clear** throws it away, and **⬇ MIDI file** downloads it as a .mid at the current tempo to drop into the MPC.
+
+- With the **beat running**, recording starts on the next bar 1 and the loop is a whole number of bars, so it stays in time with the drums. Stopping just after a downbeat ends on that downbeat.
+- With **no beat**, recording starts on your first note and the loop is exactly as long as you played.
+- The progression display follows the loop, so the chips, Up next and the green key show where the loop is.
+- The loop isn't saved with the song; download the MIDI file to keep it. Bass-guitar keys and the Aerophone aren't recorded.
+
+## Stage view
+
+On a phone, Chord Stage switches to **Stage view** by itself: the song, the big chord with Up next, the progression and song form, the chord tiles, Beat, Rec / Loop and STOP ALL, in that order, with the settings hidden. On a tablet or computer, press **▣ Stage view** next to the Piano/Horn button. **⚙ All controls** brings everything back.
+
 ## Song form
 
 **Song form** (under the progression) plays the progression as a song instead of one loop, then starts over:

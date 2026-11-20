@@ -130,6 +130,13 @@
     background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
   #beatGo { font-size: 18px; font-weight: 800; padding: 8px 18px; min-width: 130px; }
   #beatGo.on { background: #12392c; border-color: var(--tonic); color: var(--tonic); }
+  .loopbar { align-items: center; }
+  .loopbar button { font-weight: 700; }
+  #loopRec.on { background: #3d1414; border-color: #ff5a5a; color: #ff7a7a; }
+  #loopRec.armed { background: #3a3110; border-color: var(--pre); color: var(--pre); }
+  #loopPlay.on { background: #12392c; border-color: var(--tonic); color: var(--tonic); }
+  .loopbar button:disabled { opacity: .4; cursor: default; }
+  #loopInfo { color: var(--dim); font-size: 13px; }
   #beatGo.armed { background: #3a3110; border-color: var(--pre); color: var(--pre); }
   .beatbar input[type=number] { width: 70px; font: inherit; color: var(--text); background: var(--panel2);
     border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
@@ -194,6 +201,58 @@
   #start p { margin: 0; color: var(--dim); }
   #start.hide { display: none; }
 
+  /* Stage view: phones always, or any screen with the Stage view button. Just what you need while playing. */
+  #stageBtn { margin-left: auto; }
+  /* Chord first: song, big chord + up next, progression, chord tiles, then beat / loop, STOP ALL last */
+  body.compact { padding: 10px 12px 16px; display: flex; flex-direction: column; }
+  body.compact > .brand { order: 0; } body.compact > .setbar { order: 1; } body.compact > #listPanel { order: 2; }
+  body.compact > .now { order: 3; } body.compact > .progbox { order: 4; } body.compact > .grid { order: 5; }
+  body.compact > #recWrap { order: 6; } body.compact > .beatbar { order: 7; } body.compact > .loopbar { order: 8; }
+  body.compact > header { order: 9; margin-top: 10px; }
+  body.compact .logo { font-size: 15px; letter-spacing: .14em; }
+  body.compact #progRestart { display: none; }
+  body.compact .loopbar #loopInfo { display: none; }
+  body.compact .loopbar.busy #loopInfo { display: block; }
+  body.compact #beatDots { padding: 0; }
+  body.compact .maker, body.compact .guide-link { display: none; }
+  body.compact .brand { margin-bottom: 6px; align-items: center; }
+  body.compact header > .ctl:not(:last-child), body.compact header .spacer { display: none !important; }
+  body.compact header > .ctl:last-child { width: 100%; justify-content: space-between; flex-direction: row; align-items: center; }
+  body.compact .setbar { margin-top: 8px; flex-wrap: nowrap; gap: 8px; }
+  body.compact .setbar > :not(#prev):not(.songnow):not(#next) { display: none; }
+  body.compact .songnow { flex: 1; min-width: 0; }
+  body.compact .setbar .big { padding: 6px 14px; }
+  body.compact .beatbar { gap: 8px; margin-top: 8px; align-items: center; }
+  body.compact .beatbar:not(.loopbar) > .ctl:not(.keep) { display: none !important; }
+  body.compact .beatbar .ctl.keep > label { display: none; }
+  body.compact #beatGo { min-width: 0; padding: 8px 14px; }
+  body.compact #loopMidi, body.compact #loopClear { display: none; }
+  body.compact #loopInfo { flex-basis: 100%; font-size: 12px; }
+  body.compact .progbox { padding: 8px; }
+  body.compact .progin > label, body.compact #progEdit, body.compact .progin .toggle { display: none; }
+  body.compact #progStrip { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 4px; }
+  body.compact #progStrip::-webkit-scrollbar { display: none; }
+  body.compact .sec { display: none; }
+  body.compact .chip { flex: none; }
+  body.compact .formrow > label, body.compact #formPreset, body.compact #form { display: none !important; }
+  body.compact .formrow:has(#formBar:empty) { display: none; }
+  body.compact .now { flex-wrap: wrap; min-height: 0; margin: 6px 0 8px; gap: 2px 14px; }
+  body.compact #nowHint b { font-size: 20px; }
+  body.compact #nowName { font-size: clamp(56px, 17vw, 128px); }
+  body.compact .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  body.compact .tile .name { font-size: clamp(15px, 4.4vw, 28px); }
+  body.compact .legend, body.compact .knobs, body.compact .kbwrap:not(#recWrap) { display: none !important; }
+  body.compact #recWrap .kbhead { display: none; }
+  @media (min-width: 900px) { body.compact .grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @media (max-width: 520px) {
+    body.compact #nowHint { margin-left: 0; text-align: left; flex-basis: 100%; }
+    body.compact .tile { padding-left: 4px; padding-right: 4px; }
+  }
+  @media (max-width: 520px) {
+    #start .pick { flex-direction: column; width: min(320px, 90vw); }
+    #start .pick button { width: 100%; padding: 14px; }
+    #start h1 { font-size: 34px; }
+  }
   @media (max-width: 900px) {
     .grid { grid-template-columns: repeat(4, 1fr); }
     #nowName { font-size: 64px; }
@@ -212,6 +271,7 @@
   <span class="maker">Germanikkus</span>
   <a class="guide-link" href="docs/guide.html" target="_blank" rel="noopener">Guide</a>
   <button id="instBtn" title="Switch between piano and horn">🎹 Piano ▾</button>
+  <button id="stageBtn" title="Stage view: just the chords, big, for a phone or tablet on the stand">▣ Stage view</button>
 </div>
 
 <header>
@@ -269,12 +329,20 @@
 <div class="beatbar">
   <button id="beatGo" title="Start / stop the beat (Space)">▶ Beat</button>
   <div class="ctl"><label>Beat style</label><select id="beatStyle"></select></div>
-  <div class="ctl"><label>Tempo (BPM)</label><span class="pair"><input id="bpm" type="number" min="40" max="220" step="1"><button id="tap" title="Tap 4 times in time">Tap</button></span></div>
+  <div class="ctl keep"><label>Tempo (BPM)</label><span class="pair"><input id="bpm" type="number" min="40" max="220" step="1"><button id="tap" title="Tap 4 times in time">Tap</button></span></div>
   <div class="ctl"><label>Drums level</label><input id="beatLevel" type="range" min="0" max="1" step="0.01"></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle" title="Press ▶ Beat once to arm it; the beat comes in on the first chord you play"><input type="checkbox" id="beatAuto"> Start on first chord</label></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle" title="A drum fill at the end of every 4th bar"><input type="checkbox" id="beatFills"> Fills every 4 bars</label></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle" title="Send the beat to 'Send MIDI to' on channel 10 (General MIDI drum notes) so an MPC drum program plays it instead of the built-in drums"><input type="checkbox" id="beatMidi"> Drums to MPC (ch 10)</label></div>
   <div id="beatDots"><i></i><i></i><i></i><i></i><span id="beatInfo"></span></div>
+</div>
+
+<div class="beatbar loopbar">
+  <button id="loopRec" title="Record what you play (R). With the beat on, recording starts on the next bar 1 and stops at the end of a bar.">⏺ Rec</button>
+  <button id="loopPlay" disabled title="Play / stop the loop (L)">▶ Loop</button>
+  <button id="loopClear" disabled>✕ Clear</button>
+  <button id="loopMidi" disabled title="Download the loop as a MIDI file to drop into the MPC">⬇ MIDI file</button>
+  <span id="loopInfo">Record what you play, then solo over it.</span>
 </div>
 
 <div class="progbox">
@@ -380,7 +448,7 @@ const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
   windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
-  form: "", voiceLead: true, strum: 0, arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
+  stage: false, form: "", voiceLead: true, strum: 0, arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 if (typeof S.windChords === "boolean") S.windChords = S.windChords ? "silent" : "off"; // was a checkbox
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -732,6 +800,7 @@ const sounding = new Map();  // output note -> count (for display + MIDI out)
 
 function outOn(n, vel) {
   if (n < 0 || n > 127) return;
+  recNote(true, n, vel);
   sustained.delete(n);
   const c = sounding.get(n) || 0;
   sounding.set(n, c + 1);
@@ -740,6 +809,7 @@ function outOn(n, vel) {
 }
 function outOff(n) {
   const c = sounding.get(n); if (!c) return;
+  recNote(false, n, 0);
   if (sustain && c === 1) { sustained.add(n); return; }
   if (c > 1) { sounding.set(n, c - 1); synthOff(n); return; }
   sounding.delete(n); synthOff(n);
@@ -755,6 +825,7 @@ let lastChord = null, lastChordName = "", lastChordKey = null;
 // tile: which chord tile (0-7) lights up while held
 function press(id, notes, vel, chord, tile, fromProgPad) {
   release(id);
+  const recFrom = loop.events.length;
   if (id[0] === "k") { if (chord && notes.length > 1) repKeys.set(+id.slice(1), { notes: notes.slice().sort((a, b) => a - b), i: 0, chord, tile }); else repKeys.delete(+id.slice(1)); }
   if (S.arp !== "off" && chord && notes.length > 1 && "kpm".includes(id[0])) {
     held.set(id, { notes: [], chord, tile, arpNotes: notes });
@@ -776,6 +847,8 @@ function press(id, notes, vel, chord, tile, fromProgPad) {
   if (chord && id[0] === "k") lastChordKey = +id.slice(1);
   if (chord && notes.length) shownChord = chord;
   if (chord && !fromProgPad) progressHit(chord);
+  // The loop replays where the progression was after this chord, like when you played it
+  for (let i = recFrom; i < loop.events.length; i++) loop.events[i].pos = progPos;
   render();
 }
 
@@ -859,6 +932,8 @@ function release(id) {
 function panic() {
   beatStop();
   [...arps.keys()].forEach(arpStop);
+  if (loop.state === "rec") { loop.state = loop.len ? "stopped" : "empty"; loop.events = []; }
+  loopStop(); loopUI();
   held.clear(); sustained.clear(); sustain = false; freeMatch = "";
   bassHeld.clear(); bassVoices.forEach(v => v.stop(0.02)); bassVoices.clear();
   if (windVoice) windVoice.stop(0.02); windVoice = null; windNote = null;
@@ -1372,6 +1447,8 @@ function setup() {
     if (e.key === "Escape") return panic();
     if (/SELECT|INPUT/.test(e.target.tagName) && e.target.type !== "checkbox" && e.target.type !== "range") return;
     if (e.key === " ") { e.preventDefault(); return beatButton(); }
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); return loopRecButton(); }
+    if ((e.key === "l" || e.key === "L") && loop.len) { e.preventDefault(); return $("loopPlay").click(); }
     if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); stepSong(1); }
     if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); stepSong(-1); }
     if (e.key === "ArrowDown") { e.preventDefault(); stepProg(1); }
@@ -1383,6 +1460,10 @@ function setup() {
   $("progBack").onclick = () => stepProg(-1);
   $("progFwd").onclick = () => stepProg(1);
   $("progRestart").onclick = () => { progPos = 0; render(); };
+  $("loopRec").onclick = loopRecButton;
+  $("loopPlay").onclick = () => { initAudio(); loop.state === "play" ? (loopStop(), loopUI()) : loopPlay(); };
+  $("loopClear").onclick = loopClear;
+  $("loopMidi").onclick = loopMidiFile;
   $("progStrip").onclick = e => { const b = e.target.closest("[data-i]"); if (b) { progPos = +b.dataset.i; render(); } };
   $("prev").onclick = () => stepSong(-1);
   $("next").onclick = () => stepSong(1);
@@ -1408,10 +1489,136 @@ function setup() {
     initAudio(); ctx.resume(); S.inst = b.dataset.inst; S.recView = null; save();
     $("start").classList.add("hide"); syncUI(); render();
   });
+  $("stageBtn").onclick = () => {
+    if (document.body.classList.contains("compact")) { showAll = true; S.stage = false; }
+    else { showAll = false; S.stage = true; }
+    save(); applyStage(); render();
+  };
+  narrow.addEventListener("change", () => { showAll = false; applyStage(); });
+  applyStage();
   $("instBtn").onclick = () => $("start").classList.remove("hide");
   syncUI(); buildKeyboard(); renderSet(); initMidi();
 }
 
+// ---------- Record & loop ----------
+// Records the notes Chord Stage plays (chords, arp, strum, melody) and loops them, so you can play
+// over yourself. With the beat running it records whole bars from a downbeat, so the loop stays in
+// time with the drums. The progression display follows the loop.
+const loop = { state: "empty", events: [], len: 0, recStart: null, start: 0, timer: 0, last: 0, on: new Set(), bars: 0, pass: 0 };
+let loopPlaying = false; // notes sent by the loop itself, so they don't get recorded again
+const barMs = () => 60000 / S.bpm / 4 * stepsOf(BEATS[S.beatStyle] || BEATS.neosoul);
+function nextDownbeat() { // performance.now() time of the next bar 1 of the running beat
+  const st = stepsOf(BEATS[S.beatStyle] || BEATS.neosoul), d = 60 / S.bpm / 4;
+  return performance.now() + (beat.next + mod(st - beat.step, st) * d - ctx.currentTime) * 1000;
+}
+function recNote(on, n, vel) {
+  if (loopPlaying || loop.state !== "rec") return;
+  const now = performance.now();
+  if (loop.recStart == null) { if (!on) return; loop.recStart = now; } // no beat: starts on your first note
+  let t = now - loop.recStart;
+  if (t < 0) { if (t < -150) return; t = 0; } // a hair early for bar 1 still counts
+  loop.events.push({ t, on, n, vel, pos: progPos });
+}
+function loopRecButton() {
+  initAudio();
+  if (loop.state === "rec") return loopFinish();
+  loopStop(); loop.events = []; loop.state = "rec"; loop.pass = 0;
+  loop.recStart = beat.running ? nextDownbeat() : null;
+  loopUI();
+}
+function loopFinish() {
+  const now = performance.now();
+  if (loop.recStart == null || !loop.events.some(e => e.on)) { loop.state = loop.len ? "stopped" : "empty"; loop.events = []; return loopUI(); }
+  let len = now - loop.recStart;
+  if (beat.running) { // whole bars; pressing just after a downbeat ends on that downbeat
+    const bm = barMs(); loop.bars = Math.max(1, Math.round(len / bm)); len = loop.bars * bm;
+  } else loop.bars = 0;
+  const ev = loop.events.filter(e => e.t < len).sort((a, b) => a.t - b.t);
+  // Notes still held at the end get let go just before the loop comes round
+  const open = new Map(); ev.forEach(e => e.on ? open.set(e.n, (open.get(e.n) || 0) + 1) : open.set(e.n, (open.get(e.n) || 1) - 1));
+  open.forEach((c, n) => { for (let i = 0; i < c; i++) ev.push({ t: len - 5, on: false, n, vel: 0 }); });
+  loop.events = ev; loop.len = len;
+  loopPlay(beat.running ? loop.recStart + len : now);
+}
+function loopPlay(at) {
+  if (!loop.len) return;
+  clearInterval(loop.timer);
+  loop.state = "play"; loop.start = at != null ? at : beat.running ? nextDownbeat() : performance.now();
+  loop.last = -1; loop.pass = 0;
+  // Stop pressed a little after the bar: pick up where the loop already is, without a burst of notes
+  const el = performance.now() - loop.start;
+  if (el > 0) { loop.pass = Math.floor(el / loop.len); loop.last = el - loop.pass * loop.len; }
+  loop.timer = setInterval(loopTick, 8); loopUI();
+}
+function loopSend(e) {
+  loopPlaying = true;
+  if (e.on) { outOn(e.n, e.vel); loop.on.add(e.n); } else if (loop.on.has(e.n)) { outOff(e.n); loop.on.delete(e.n); }
+  loopPlaying = false;
+}
+function loopTick() {
+  const el = performance.now() - loop.start; if (el < 0) return;
+  const pass = Math.floor(el / loop.len), pos = el - pass * loop.len;
+  if (pass !== loop.pass) { // came round: let go of anything still sounding from the last pass
+    [...loop.on].forEach(n => loopSend({ on: false, n })); loop.pass = pass; loop.last = -1; loopUI();
+  }
+  let moved = false;
+  for (const e of loop.events) {
+    if (e.t <= loop.last || e.t > pos) continue;
+    loopSend(e);
+    if (e.on && e.pos != null && e.pos !== progPos) { progPos = e.pos; moved = true; }
+  }
+  loop.last = pos;
+  if (moved) render();
+}
+function loopStop() {
+  clearInterval(loop.timer);
+  [...loop.on].forEach(n => loopSend({ on: false, n }));
+  if (loop.state === "play") loop.state = "stopped";
+}
+function loopClear() { loopStop(); loop.events = []; loop.len = 0; loop.state = "empty"; loopUI(); }
+// A standard MIDI file (type 0, one track, channel 1) at the current tempo, for the MPC
+function loopMidiFile() {
+  const ppq = 480, msPerTick = 60000 / S.bpm / ppq, bytes = [];
+  const vlq = v => { const b = [v & 0x7f]; while ((v >>= 7)) b.unshift((v & 0x7f) | 0x80); return b; };
+  const us = Math.round(60000000 / S.bpm);
+  bytes.push(0, 0xff, 0x51, 3, (us >> 16) & 255, (us >> 8) & 255, us & 255);
+  let lastTick = 0;
+  loop.events.forEach(e => {
+    const tick = Math.round(e.t / msPerTick);
+    bytes.push(...vlq(tick - lastTick), e.on ? 0x90 : 0x80, e.n, e.on ? Math.max(1, e.vel) : 0); lastTick = tick;
+  });
+  bytes.push(...vlq(Math.max(0, Math.round(loop.len / msPerTick) - lastTick)), 0xff, 0x2f, 0);
+  const n32 = n => [(n >> 24) & 255, (n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const file = new Uint8Array([0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (ppq >> 8) & 255, ppq & 255,
+    0x4d, 0x54, 0x72, 0x6b, ...n32(bytes.length), ...bytes]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([file], { type: "audio/midi" }));
+  a.download = ((current() && current().name) || "Chord Stage") + " loop.mid"; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function loopUI() {
+  const rec = $("loopRec"), play = $("loopPlay"); if (!rec) return;
+  document.querySelector(".loopbar").classList.toggle("busy", loop.state === "rec" || loop.state === "play");
+  const waiting = loop.state === "rec" && (loop.recStart == null || loop.recStart > performance.now());
+  rec.classList.toggle("on", loop.state === "rec" && !waiting); rec.classList.toggle("armed", waiting);
+  rec.textContent = loop.state === "rec" ? "■ Stop rec" : "⏺ Rec";
+  play.disabled = $("loopClear").disabled = $("loopMidi").disabled = !loop.len || loop.state === "rec";
+  play.classList.toggle("on", loop.state === "play"); play.textContent = loop.state === "play" ? "■ Stop loop" : "▶ Loop";
+  const len = loop.bars ? `${loop.bars} bar${loop.bars > 1 ? "s" : ""}` : `${(loop.len / 1000).toFixed(1)} s`;
+  $("loopInfo").textContent =
+    loop.state === "rec" ? (loop.recStart == null ? "Recording starts on your first note…" : waiting ? "Recording starts on the next bar 1…" : "● Recording. Press Stop rec when you're done.")
+    : loop.state === "play" ? `Looping ${len}${loop.pass ? ` · pass ${loop.pass + 1}` : ""}. Play over it!`
+    : loop.len ? `Loop ready: ${len}.` : "Record what you play, then solo over it.";
+  if (waiting) setTimeout(loopUI, Math.max(30, loop.recStart - performance.now() + 5));
+}
+// Stage view: on for narrow screens (phones) unless "All controls" was picked, or by the button
+const narrow = matchMedia("(max-width: 760px)");
+let showAll = false;
+function applyStage() {
+  const on = (S.stage || narrow.matches) && !showAll;
+  document.body.classList.toggle("compact", on);
+  $("stageBtn").textContent = on ? "⚙ All controls" : "▣ Stage view";
+}
 function renderFormBar(steps, cur) {
   const bar = $("formBar"); if (!bar) return;
   if (!cur || cur.part == null) { bar.innerHTML = ""; return; }
@@ -1466,6 +1673,10 @@ function render() {
     `${s.chord.name}<small>${s.chord.num}</small></button>`).join("") +
     bad.map(b => `<span class="chip bad" title="Not a chord I can read">${esc(b)}</span>`).join("");
 
+  const curChip = $("progStrip").querySelector(".cur");
+  if (curChip && document.body.classList.contains("compact")) {
+    const strip = $("progStrip"); strip.scrollLeft = curChip.offsetLeft - strip.offsetLeft - strip.clientWidth / 2 + curChip.clientWidth / 2;
+  }
   // Big display
   const notes = [...sounding.keys()];
   const top = [...held.values()].reverse().find(h => h.chord);
