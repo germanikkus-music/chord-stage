@@ -166,6 +166,16 @@
   .chip.cur { background: var(--fn); color: #0d0f14; border-color: var(--hot); transform: scale(1.12); margin: 0 6px; }
   .chip.cur small { color: #0d0f14; }
   .chip.bad { border-color: var(--dom); color: var(--dom); text-decoration: line-through; cursor: default; }
+  .formrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; }
+  .formrow > label { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+  #form { display: none; flex: 0 1 260px; font: 14px ui-monospace, Menlo, monospace; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
+  .formrow.custom #form { display: block; }
+  #formBar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .fpart { padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+  .fpart.on { border-color: var(--accent); color: var(--text); background: rgba(124,196,255,.12); font-weight: 700; }
+  .fpart.done { opacity: .5; }
+  .farrow { color: var(--dim); font-size: 11px; }
   .sec { width: 100%; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }
   .sec:first-child { margin-top: 0; }
 
@@ -277,6 +287,20 @@
     <button id="progFwd" title="Skip ahead one chord (↓)">▶</button>
     <label class="toggle" title="Any chord key on the next chord's root plays that exact chord from the progression"><input type="checkbox" id="sloppy"> Sloppy mode</label>
   </div>
+  <div class="formrow">
+    <label for="formPreset" title="Play the progression as a song: repeats, key changes and a bridge, then back to the top">Song form</label>
+    <select id="formPreset">
+      <option value="loop">Loop</option>
+      <option value="down">3×, then down a step</option>
+      <option value="lift">3×, then lift a half step (twice)</option>
+      <option value="fourth">3×, then up a 4th</option>
+      <option value="bridge">3×, then a bridge</option>
+      <option value="both">2×, bridge, down a step, home</option>
+      <option value="custom">Custom…</option>
+    </select>
+    <input id="form" spellcheck="false" autocomplete="off" placeholder="Main x3, Main -2, Bridge, Main" title="Parts separated by commas: Main, a [Section] name, or Bridge. x3 repeats, +2 / -2 moves up or down that many half steps.">
+    <div id="formBar"></div>
+  </div>
   <!-- The text (with MPC voicings it gets long) only shows while editing, or when there is no progression yet -->
   <input id="prog" spellcheck="false" autocomplete="off"
     placeholder="[Verse] I V vi IV  [Chorus] IV I V vi   — or chord names: G D Em C">
@@ -356,7 +380,7 @@ const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
   windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
-  voiceLead: true, strum: 0, arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
+  form: "", voiceLead: true, strum: 0, arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 if (typeof S.windChords === "boolean") S.windChords = S.windChords ? "silent" : "off"; // was a checkbox
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -757,7 +781,51 @@ function press(id, notes, vel, chord, tile, fromProgPad) {
 
 // Following a progression: playing the expected chord (or the one after it) moves ahead
 let progPos = 0, freeMatch = "";
-const progSteps = () => parseProg(S.prog || "").steps;
+// Song form: the progression played as a song instead of one loop, e.g. "Main x3, Main -2, Bridge".
+// Parts: Main (the whole progression), a [Section] from the progression, or Bridge (one is written
+// for the key when the progression has no [Bridge]). "x3" repeats a part; "+5" / "-2" moves it up or
+// down that many half steps. After the last part it starts over.
+const FORMS = {
+  loop: "", down: "Main x3, Main -2", lift: "Main x3, Main +1, Main +1", fourth: "Main x3, Main +5",
+  bridge: "Main x3, Bridge", both: "Main x2, Bridge, Main -2, Main",
+};
+function shiftChord(c, n) {
+  if (!n) return c;
+  const rootPc = mod(c.rootPc + n, 12), bassPc = c.bassPc != null ? mod(c.bassPc + n, 12) : null;
+  // Spelled the way the moved key spells (Eb down a step = Db: flats)
+  const names = FLAT_MAJORS.has(mod(S.key + SCALES[S.scale].parent + n, 12)) ? FLAT : SHARP;
+  const name = c.name.replace(/^[A-G][#b]?/, names[rootPc]).replace(/\/[A-G][#b]?$/, () => "/" + names[bassPc]);
+  return { ...c, rootPc, bassPc, name, degree: -1, voicing: c.voicing ? c.voicing.map(v => v + n) : undefined };
+}
+function bridgeChords() {
+  const kc = keyChords(), minor = /minor|aeolian|dorian|phrygian/i.test(S.scale);
+  return (minor ? [5, 6, 3, 4] : [3, 4, 2, 5]).map(d => kc[d]); // IV V iii vi  /  VI VII iv v
+}
+function formParts(text) {
+  return (text || "").split(/[,;\n]+/).map(t => t.trim()).filter(Boolean).map(t => {
+    // "Main x3 -2" and "Main -2 x3" both work
+    const times = t.match(/[x×]\s*(\d+)/i), shift = t.match(/([+-])\s*(\d+)/);
+    const name = t.replace(/[x×]\s*\d+/i, "").replace(/[+-]\s*\d+/, "").trim() || "Main";
+    return { name, times: Math.max(1, Math.min(16, times ? +times[1] : 1)), shift: shift ? (shift[1] === "-" ? -1 : 1) * +shift[2] : 0, text: t };
+  });
+}
+function progSteps() {
+  const base = parseProg(S.prog || "").steps, form = S.form || "";
+  if (!form.trim() || !base.length) return base;
+  // Sections by their [Label]
+  const secs = {}; let curSec = null;
+  base.forEach(st => { if (st.label) curSec = st.label.toLowerCase(); if (curSec) (secs[curSec] = secs[curSec] || []).push(st); });
+  const out = [];
+  formParts(form).forEach((p, part) => {
+    const key = p.name.toLowerCase();
+    let steps = key === "main" || key === "a" ? base : secs[key];
+    if (!steps && /^(bridge|b)$/.test(key)) steps = bridgeChords().map(chord => ({ chord, label: null }));
+    if (!steps) return;
+    for (let k = 0; k < p.times; k++) steps.forEach((st, i) => out.push({
+      chord: shiftChord(st.chord, p.shift), label: st.label, part, pass: k, passes: p.times, partName: p.text }));
+  });
+  return out.length ? out : base;
+}
 const chordId = c => c.rootPc + ":" + c.tones.slice(1, 3).join(",");
 function progressHit(chord) {
   const steps = progSteps(); if (!steps.length) return;
@@ -1242,6 +1310,9 @@ function syncUI() {
   $("prog").value = S.prog;
   document.querySelector(".progbox").classList.toggle("empty", !S.prog);
   $("sloppy").checked = S.sloppy;
+  $("form").value = S.form || "";
+  const preset = Object.keys(FORMS).find(k => FORMS[k] === (S.form || "")) || "custom";
+  $("formPreset").value = preset; document.querySelector(".formrow").classList.toggle("custom", preset === "custom");
   $("beatStyle").value = S.beatStyle; $("bpm").value = S.bpm; $("beatLevel").value = S.beatLevel;
   $("beatAuto").checked = S.beatAuto; $("beatFills").checked = S.beatFills; $("beatMidi").checked = S.beatMidi;
 }
@@ -1280,6 +1351,14 @@ function setup() {
   bind("bassSound", t => { releaseBass(); S.bassSound = t.value; });
   bind("bassStyle", t => S.bassStyle = t.value);
   bind("sloppy", t => S.sloppy = t.checked);
+  $("formPreset").onchange = e => {
+    const v = e.target.value, row = document.querySelector(".formrow");
+    row.classList.toggle("custom", v === "custom");
+    if (v === "custom") { $("form").value = S.form || FORMS.both; $("form").focus(); }
+    S.form = v === "custom" ? $("form").value : FORMS[v];
+    progPos = 0; save(); render();
+  };
+  $("form").onchange = e => { S.form = e.target.value; progPos = 0; save(); render(); };
   bind("beatStyle", t => S.beatStyle = t.value);
   bind("bpm", t => { S.bpm = Math.max(40, Math.min(220, Math.round(+t.value) || 84)); t.value = S.bpm; });
   bind("beatAuto", t => S.beatAuto = t.checked);
@@ -1333,6 +1412,15 @@ function setup() {
   syncUI(); buildKeyboard(); renderSet(); initMidi();
 }
 
+function renderFormBar(steps, cur) {
+  const bar = $("formBar"); if (!bar) return;
+  if (!cur || cur.part == null) { bar.innerHTML = ""; return; }
+  const parts = []; steps.forEach(s => { if (!parts[s.part]) parts[s.part] = s; });
+  bar.innerHTML = parts.filter(Boolean).map(p => {
+    const on = p.part === cur.part, done = p.part < cur.part;
+    return `<span class="fpart${on ? " on" : done ? " done" : ""}">${esc(p.partName)}${on && p.passes > 1 ? ` · ${cur.pass + 1}/${p.passes}` : ""}</span>`;
+  }).join("<span class=\"farrow\">→</span>");
+}
 // Would pressing this chord's root in the chord zone play it? (Chord lock, Sloppy mode, or a plain chord of the key)
 function playsFromKeys(chord) {
   const modes = [S.lowerMode, S.upperMode];
@@ -1351,7 +1439,7 @@ function tileHow(c, i) {
 function render() {
   const chords = keyChords(), grid = $("grid");
   const lit = new Set([...held.values()].filter(h => h.chord).map(h => h.tile));
-  const { steps, bad } = parseProg(S.prog || "");
+  const { bad } = parseProg(S.prog || ""), steps = progSteps();
   const want = steps.length ? steps[progPos % steps.length] : null, after = steps.length > 1 ? steps[(progPos + 1) % steps.length] : null;
   // With a progression, only the chord that comes next gets the outline
   const next = want ? (want.chord.degree >= 0 ? [want.chord.degree] : []) : lastChord == null ? [] : NEXT[lastChord];
@@ -1369,7 +1457,11 @@ function render() {
       `<div class="pad">${[tileHow(c, i), high ? (want ? "NEXT CHORD" : "HIGH") : ""].filter(Boolean).join(" · ")}</div>`;
   });
 
-  $("progStrip").innerHTML = steps.map((s, i) => (s.label ? `<span class="sec">${esc(s.label)}</span>` : "") +
+  // With a song form, the strip shows the part being played now, and the form bar shows where you are
+  const curStep = steps[progPos % (steps.length || 1)];
+  const inPart = (s) => !curStep || curStep.part == null || (s.part === curStep.part && s.pass === curStep.pass);
+  renderFormBar(steps, curStep);
+  $("progStrip").innerHTML = steps.map((s, i) => !inPart(s) ? "" : (s.label ? `<span class="sec">${esc(s.label)}</span>` : "") +
     `<button class="chip${i === progPos ? " cur" : i < progPos ? " done" : ""}" data-i="${i}" style="--fn:var(${FUNC_VAR[s.chord.func]})">` +
     `${s.chord.name}<small>${s.chord.num}</small></button>`).join("") +
     bad.map(b => `<span class="chip bad" title="Not a chord I can read">${esc(b)}</span>`).join("");
@@ -1592,7 +1684,7 @@ function showBeat(pos) {
 
 // ---------- Set list ----------
 const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog",
-  "bassSplit", "bassSound", "bassStyle", "sloppy", "voiceLead", "strum", "arp", "arpRate", "arpOct",
+  "bassSplit", "bassSound", "bassStyle", "sloppy", "form", "voiceLead", "strum", "arp", "arpRate", "arpOct",
   "beatStyle", "bpm", "beatAuto", "beatFills"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];

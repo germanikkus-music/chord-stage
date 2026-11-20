@@ -13,6 +13,19 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - Set list with per-song settings; switch with ◀ ▶, arrow keys, Page Up/Down (foot pedal) or knob 8.
 - Built-in sounds, or send MIDI to MPC 3 (via the IAC Driver) or the MPK's 5-pin MIDI out.
 
+## Song form
+
+**Song form** (under the progression) plays the progression as a song instead of one loop, then starts over:
+
+- **3×, then down a step**: three times as written, once a whole step lower.
+- **3×, then lift a half step (twice)**: the gospel-style key change, up a half step, then another.
+- **3×, then up a 4th**: a key change up four steps (Eb to Ab).
+- **3×, then a bridge**: a 4-chord bridge in the song's key (IV V iii vi in major, VI VII iv v in minor).
+- **2×, bridge, down a step, home**.
+- **Custom…**: type your own, parts separated by commas. `Main` is the whole progression, a `[Section]` name from the progression plays just that section, and `Bridge` uses your `[Bridge]` section or writes one. `x3` repeats a part, and `+2` / `-2` moves it up or down that many half steps. Example: `Main x3, Main -2, Bridge, Main +1`.
+
+The bar shows each part, with the one you're in highlighted (and which pass, like 2/3), and the chord chips show that part's chords. Moved parts keep MPC voicings, shifted. Sloppy mode, pad 8 and Chord lock all follow the moved chords. Saved with each song.
+
 ## Smooth voicing
 
 **Smooth voicing** (Piano, on by default) plays each chord in the inversion closest to the chord before it, so changes glide from one to the next instead of jumping up and down the keyboard, the way neo soul and gospel players voice-lead. The chord sits from E3 up and the bass note (or the slash-chord bass) sits in C2–B2 underneath. In a ii–V–I–vi–IV–V–I the notes move about a quarter as far as before. Untick it for plain root-position chords. Chords imported from MPC keep their exact voicings.
