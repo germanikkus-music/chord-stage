@@ -134,6 +134,7 @@
   .loopbar button { font-weight: 700; }
   #loopRec.on { background: #3d1414; border-color: #ff5a5a; color: #ff7a7a; }
   #loopRec.armed { background: #3a3110; border-color: var(--pre); color: var(--pre); }
+  #melodyOver.on { background: #13304a; border-color: var(--accent); color: var(--accent); }
   #loopPlay.on { background: #12392c; border-color: var(--tonic); color: var(--tonic); }
   .loopbar button:disabled { opacity: .4; cursor: default; }
   #loopInfo { color: var(--dim); font-size: 13px; }
@@ -341,6 +342,7 @@
   <button id="loopRec" title="Record what you play (R). With the beat on, recording starts on the next bar 1 and stops at the end of a bar.">⏺ Rec</button>
   <button id="loopPlay" disabled title="Play / stop the loop (L)">▶ Loop</button>
   <button id="loopClear" disabled>✕ Clear</button>
+  <button id="melodyOver" title="Solo over the loop: every key plays one note in the key, an octave up (M)">🎵 Melody over</button>
   <button id="loopMidi" disabled title="Download the loop as a MIDI file to drop into the MPC">⬇ MIDI file</button>
   <span id="loopInfo">Record what you play, then solo over it.</span>
 </div>
@@ -914,6 +916,7 @@ function progressHit(chord) {
 }
 // Chords played by hand (free or melody keys) also count once all of their notes are down
 function checkFree() {
+  if (loop.state === "play") return; // the loop's own notes would look like chords you played
   if ([...held.values()].some(h => h.chord)) return;
   const notes = [...sounding.keys()]; if (notes.length < 3) return;
   const d = nameNotes(notes); if (!d.iv) return;
@@ -1244,7 +1247,11 @@ function repeatTick(note, vel) {
   release("k" + note); held.set("k" + note, { notes: [n], chord: r.chord, tile: r.tile }); outOn(n, vel); render();
   return true;
 }
+// Melody over: the whole keyboard plays single notes in the key, an octave up, for soloing over a loop
+let melodyOver = false;
+function setMelodyOver(on) { melodyOver = on; $("melodyOver").classList.toggle("on", on); }
 function keyDown(note, vel) {
+  if (melodyOver) return press("k" + note, [Math.min(108, snapNearest(note) + 12)], vel, null);
   if (isBass(note)) return bassDown(note, vel);
   if (repeatTick(note, vel)) return;
   keyDownAt.set(note, performance.now());
@@ -1455,6 +1462,7 @@ function setup() {
     if (/SELECT|INPUT/.test(e.target.tagName) && e.target.type !== "checkbox" && e.target.type !== "range") return;
     if (e.key === " ") { e.preventDefault(); return beatButton(); }
     if (e.key === "r" || e.key === "R") { e.preventDefault(); return loopRecButton(); }
+    if (e.key === "m" || e.key === "M") { e.preventDefault(); return setMelodyOver(!melodyOver); }
     if ((e.key === "l" || e.key === "L") && loop.len) { e.preventDefault(); return $("loopPlay").click(); }
     if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); stepSong(1); }
     if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); stepSong(-1); }
@@ -1471,6 +1479,7 @@ function setup() {
   $("loopPlay").onclick = () => { initAudio(); loop.state === "play" ? (loopStop(), loopUI()) : loopPlay(); };
   $("loopClear").onclick = loopClear;
   $("loopMidi").onclick = loopMidiFile;
+  $("melodyOver").onclick = () => setMelodyOver(!melodyOver);
   $("progStrip").onclick = e => { const b = e.target.closest("[data-i]"); if (b) { progPos = +b.dataset.i; render(); } };
   $("prev").onclick = () => stepSong(-1);
   $("next").onclick = () => stepSong(1);
