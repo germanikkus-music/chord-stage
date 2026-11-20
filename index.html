@@ -221,6 +221,7 @@
   <div class="ctl piano-only"><label>Split at</label><button id="split">C4</button></div>
   <div class="ctl piano-only"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="sevenths"> 7th chords</label></div>
   <div class="ctl piano-only"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="bass" checked> Low root under chords</label></div>
+  <div class="ctl piano-only"><label>&nbsp;</label><label class="toggle" title="Each chord uses the inversion closest to the last one, so changes move smoothly instead of jumping"><input type="checkbox" id="voiceLead"> Smooth voicing</label></div>
   <div class="ctl"><label>Send MIDI to</label><select id="out"><option value="">Nothing (built-in sound only)</option></select></div>
   <div class="ctl"><label>&nbsp;</label><label class="toggle"><input type="checkbox" id="internal" checked> Built-in sound</label></div>
   <div class="spacer"></div>
@@ -348,7 +349,7 @@ const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
   windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
-  arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
+  voiceLead: true, arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 if (typeof S.windChords === "boolean") S.windChords = S.windChords ? "silent" : "off"; // was a checkbox
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -395,8 +396,33 @@ function degreeOf(n) {
   return best;
 }
 // MIDI notes for a chord, root placed at or just below `near`
+// Smooth voicing: each chord takes the inversion closest to the one before, so the hand
+// (and the sound) moves as little as possible, the way players voice-lead neo soul and gospel changes.
+// The chord stays between E3 and E4 at the bottom; the bass note sits in C2–B2 below it.
+let prevUpper = null;
+function leadVoice(chord) {
+  const pcs = [...new Set(chord.tones.map(t => mod(chord.rootPc + t, 12)))];
+  const cost = c => !prevUpper ? Math.abs(c[0] - 55) :
+    c.reduce((a, n) => a + Math.min(...prevUpper.map(p => Math.abs(p - n))), 0) +
+    prevUpper.reduce((a, p) => a + Math.min(...c.map(n => Math.abs(p - n))), 0) + Math.abs(c[0] - 58) * 0.1;
+  let best = null, bestCost = Infinity;
+  for (let k = 0; k < pcs.length; k++) {
+    const order = pcs.slice(k).concat(pcs.slice(0, k));
+    for (let low = 52; low <= 64; low++) {
+      if (mod(low, 12) !== order[0]) continue;
+      const c = [low]; order.slice(1).forEach(pc => { let n = c[c.length - 1] + 1; while (mod(n, 12) !== pc) n++; c.push(n); });
+      const v = cost(c); if (v < bestCost) { bestCost = v; best = c; }
+    }
+  }
+  prevUpper = best;
+  const notes = best.slice(), bassPc = chord.bassPc != null ? chord.bassPc : S.bass ? chord.rootPc : null;
+  // Bass in C2–B2, at least a 5th under the chord
+  if (bassPc != null) { let b = 36 + bassPc; if (b > best[0] - 7) b -= 12; notes.unshift(b); }
+  return notes;
+}
 function voice(chord, near) {
   if (chord.voicing) return chord.voicing.slice(); // the exact notes from an MPC progression
+  if (S.voiceLead) return leadVoice(chord);
   let root = near - mod(near - chord.rootPc, 12);
   if (root < 40) root += 12;
   const notes = chord.tones.map(t => root + t);
@@ -957,7 +983,8 @@ function fingerChordDown(n, vel) {
     const { chord, skip } = fingerChordFor(n);
     if (skip) progPos = (progPos + skip) % progSteps().length;
     fcStop();
-    const notes = voice(chord, 55 + mod(chord.rootPc - 7, 12) + (+S.windOct || 0));
+    const notes = voice(chord, 55 + mod(chord.rootPc - 7, 12) + (+S.windOct || 0))
+      .map(m => m + (S.voiceLead && !chord.voicing ? +S.windOct || 0 : 0)); // smooth voicing ignores `near`
     if (ctx && S.internal) {
       if (!windBreath) windBus.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
       const kind = S.windSound === "keys" ? S.sound : S.windSound;
@@ -998,7 +1025,7 @@ function lockDown(note, vel) {
 }
 
 // ---------- Arpeggiator ----------
-// Chords play one note at a time, in time with the Tempo. A low root (an octave or more under
+// Chords play one note at a time, in time with the Tempo. A low root (a 5th or more under
 // the rest) holds underneath as the bass instead of joining the pattern.
 const arps = new Map(); // held id -> running arp
 function arpPattern(notes) {
@@ -1010,7 +1037,7 @@ function arpPattern(notes) {
 }
 function arpStart(id, notes, vel) {
   const sorted = notes.slice().sort((a, b) => a - b);
-  const bass = sorted.length > 2 && sorted[1] - sorted[0] >= 12 ? sorted.shift() : null;
+  const bass = sorted.length > 2 && sorted[1] - sorted[0] >= 7 ? sorted.shift() : null;
   const a = { seq: arpPattern(sorted), i: 0, cur: null, bass, vel, timer: 0, gate: 0 };
   arps.set(id, a);
   if (bass != null) outOn(bass, vel);
@@ -1045,7 +1072,7 @@ function repeatTick(note, vel) {
   const r = repKeys.get(note), up = keyUpAt.get(note), down = keyDownAt.get(note), now = performance.now();
   if (!r || up == null || down == null || now - up > 100 || up - down > 200) return false;
   keyDownAt.set(note, now);
-  const upper = r.notes.length > 2 && r.notes[1] - r.notes[0] >= 12 ? r.notes.slice(1) : r.notes; // leave the low root out
+  const upper = r.notes.length > 2 && r.notes[1] - r.notes[0] >= 7 ? r.notes.slice(1) : r.notes; // leave the low root out
   const seq = S.arp === "off" ? upper : arpPattern(upper);
   const n = S.arp === "random" ? seq[Math.floor(Math.random() * seq.length)] : seq[++r.i % seq.length];
   release("k" + note); held.set("k" + note, { notes: [n], chord: r.chord, tile: r.tile }); outOn(n, vel); render();
@@ -1189,6 +1216,7 @@ function syncUI() {
   $("windTune").textContent = windLearn ? "Finger C and blow…" : S.windCal ? "Tuned " + (S.windCal > 0 ? "+" : "") + S.windCal : "Tune";
   $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
   $("arp").value = S.arp; $("arpRate").value = S.arpRate; $("arpOct").value = S.arpOct;
+  $("voiceLead").checked = S.voiceLead;
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
   $("split").textContent = learnSplit ? "Press a key…" : noteName(S.split);
   $("bassSplit").textContent = learnBass ? "Press top bass key…" : S.bassSplit ? "Up to " + noteName(S.bassSplit - 1) : "Off";
@@ -1221,6 +1249,7 @@ function setup() {
   bind("upperMode", t => S.upperMode = t.value);
   bind("sevenths", t => S.sevenths = t.checked);
   bind("arp", t => S.arp = t.value);
+  bind("voiceLead", t => { S.voiceLead = t.checked; prevUpper = null; });
   bind("arpRate", t => S.arpRate = +t.value);
   bind("arpOct", t => S.arpOct = +t.value);
   bind("bass", t => S.bass = t.checked);
@@ -1546,7 +1575,7 @@ function showBeat(pos) {
 
 // ---------- Set list ----------
 const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog",
-  "bassSplit", "bassSound", "bassStyle", "sloppy", "arp", "arpRate", "arpOct",
+  "bassSplit", "bassSound", "bassStyle", "sloppy", "voiceLead", "arp", "arpRate", "arpOct",
   "beatStyle", "bpm", "beatAuto", "beatFills"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];
