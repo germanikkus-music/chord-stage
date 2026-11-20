@@ -1249,7 +1249,7 @@ function repeatTick(note, vel) {
 }
 // Melody over: the whole keyboard plays single notes in the key, an octave up, for soloing over a loop
 let melodyOver = false;
-function setMelodyOver(on) { melodyOver = on; $("melodyOver").classList.toggle("on", on); }
+function setMelodyOver(on) { melodyOver = on; $("melodyOver").classList.toggle("on", on); document.body.classList.toggle("melody-over", on); render(); }
 function keyDown(note, vel) {
   if (melodyOver) return press("k" + note, [Math.min(108, snapNearest(note) + 12)], vel, null);
   if (isBass(note)) return bassDown(note, vel);
@@ -1540,6 +1540,7 @@ function recNote(on, n, vel) {
 function loopRecButton() {
   initAudio();
   if (loop.state === "rec") return loopFinish();
+  setMelodyOver(false); // a new loop is chords again
   loopStop(); loop.events = []; loop.state = "rec"; loop.pass = 0;
   loop.recStart = beat.running ? nextDownbeat() : null;
   loopUI();
@@ -1596,7 +1597,7 @@ function loopStop() {
   loopAllOff();
   if (loop.state === "play") loop.state = "stopped";
 }
-function loopClear() { loopStop(); loop.events = []; loop.len = 0; loop.state = "empty"; loopUI(); }
+function loopClear() { setMelodyOver(false); loopStop(); loop.events = []; loop.len = 0; loop.state = "empty"; loopUI(); }
 // A standard MIDI file (type 0, one track, channel 1) at the current tempo, for the MPC
 function loopMidiFile() {
   const ppq = 480, msPerTick = 60000 / S.bpm / ppq, bytes = [];
@@ -1706,7 +1707,7 @@ function render() {
   else if (notes.length === 1) { $("nowName").textContent = noteName(notes[0]); $("nowNum").textContent = ""; }
   else { $("nowName").textContent = lastChordName || "–"; $("nowNum").textContent = ""; }
   $("nowName").style.opacity = notes.length ? 1 : 0.35;
-  $("nowHint").innerHTML = `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
+  $("nowHint").innerHTML = (melodyOver ? `<span class="press" style="color:var(--accent)">🎵 Melody over is on: keys play single notes</span><br>` : "") + `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
     (want ? `Up next: <b>${want.chord.name}</b>${S.inst === "horn" ? (S.windChords === "fingers" ? `<span class="press">Finger ${SHARP[fingerFor(want.chord)]}</span>` : S.windChords === "off" ? "" : `<span class="press">Blow ${rootLabel(want.chord)}</span>`) : `<span class="press">Press ${want.chord.name.match(/^[A-G][#b]?/) ? want.chord.name.match(/^[A-G][#b]?/)[0] : pcName(want.chord.rootPc)}</span>${playsFromKeys(want.chord) ? "" : " (turn on Sloppy mode or Chord lock)"}`}<br>${after ? "then " + after.chord.name : ""}`
       : next.length ? "Try next: " + next.map(d => chords[d].name).join(" · ") : "Play a chord to see what fits next") +
     (windNote != null ? `<br>Aerophone: <b>${noteName(windNote)}</b>` : "") +
