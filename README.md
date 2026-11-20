@@ -19,6 +19,7 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 
 - With the **beat running**, recording starts on the next bar 1 and the loop is a whole number of bars, so it stays in time with the drums. Stopping just after a downbeat ends on that downbeat.
 - With **no beat**, recording starts on your first note and the loop is exactly as long as you played.
+- A waiting Rec blinks yellow. If you don't play a note within 20 seconds, it cancels itself, so a stray tap can't start recording later.
 - The progression display follows the loop, so the chips, Up next and the green key show where the loop is.
 - **🎵 Melody over** (M) turns the whole keyboard into a solo instrument: every key plays one note in the key, an octave higher, with no chords. Tap it again to go back. It turns itself off when you Clear or start a new recording, and Up next shows a reminder while it is on.
 - The loop plays a little softer than you (70%), and your sustain pedal only holds what you play, not the loop.

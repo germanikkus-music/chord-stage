@@ -133,7 +133,9 @@
   .loopbar { align-items: center; }
   .loopbar button { font-weight: 700; }
   #loopRec.on { background: #3d1414; border-color: #ff5a5a; color: #ff7a7a; }
-  #loopRec.armed { background: #3a3110; border-color: var(--pre); color: var(--pre); }
+  #loopRec.armed { background: #3a3110; border-color: var(--pre); color: var(--pre); animation: recBlink 1s steps(2, start) infinite; }
+  @keyframes recBlink { to { opacity: .35; } }
+  #loopRec { margin-right: 18px; }
   #melodyOver.on { background: #13304a; border-color: var(--accent); color: var(--accent); }
   #loopPlay.on { background: #12392c; border-color: var(--tonic); color: var(--tonic); }
   .loopbar button:disabled { opacity: .4; cursor: default; }
@@ -1543,7 +1545,16 @@ function loopRecButton() {
   setMelodyOver(false); // a new loop is chords again
   loopStop(); loop.events = []; loop.state = "rec"; loop.pass = 0;
   loop.recStart = beat.running ? nextDownbeat() : null;
+  loop.armedAt = performance.now(); clearInterval(loop.idle); loop.idle = setInterval(loopIdleCheck, 1000);
   loopUI();
+}
+// A stray tap on Rec: if no note comes within 20 s, give up instead of recording later by surprise
+const REC_GIVE_UP = 20000;
+function loopIdleCheck() {
+  if (loop.state !== "rec" || loop.events.some(e => e.on)) return clearInterval(loop.idle);
+  if (performance.now() - loop.armedAt < REC_GIVE_UP) return;
+  clearInterval(loop.idle); loop.events = []; loop.state = loop.len ? "stopped" : "empty"; loopUI();
+  $("loopInfo").textContent = "Rec cancelled: no notes played.";
 }
 function loopFinish() {
   const now = performance.now();
