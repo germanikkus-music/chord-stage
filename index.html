@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chord Stage</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d0f14">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
   :root {
     --bg: #0d0f14; --panel: #161a22; --panel2: #1e2330; --line: #2a3142;
@@ -1717,6 +1721,10 @@ function load(def) { try { return { ...def, ...JSON.parse(localStorage.getItem("
 function save() { try { localStorage.setItem("chordstage", JSON.stringify(S)); } catch {} renderSet(); }
 
 setup();
+</script>
+<script>
+// Installable app + offline use (only works from a web address, not when opened as a file)
+if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>

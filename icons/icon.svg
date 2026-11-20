@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0d0f14"/>
+  <g transform="translate(256 256) scale(0.82) translate(-256 -256)">
+  <!-- three piano keys pressed as a chord, in the app's home / away / tension colors -->
+  <g transform="translate(256 268)">
+        <rect x="-150" y="-120" width="100" height="230" rx="22" fill="#5ad1a0"/>
+    <rect x="-50"  y="-120" width="100" height="230" fill="#f2c14e"/>
+    <rect x="50"   y="-120" width="100" height="230" rx="22" fill="#ff7a6b"/>
+    <rect x="45" y="-120" width="30" height="230" fill="#ff7a6b"/>
+    <rect x="-80" y="-120" width="30" height="230" fill="#5ad1a0"/>
+    <line x1="-50" y1="-120" x2="-50" y2="110" stroke="#0d0f14" stroke-width="8"/>
+    <line x1="50" y1="-120" x2="50" y2="110" stroke="#0d0f14" stroke-width="8"/>
+    <rect x="-72" y="-120" width="44" height="135" rx="8" fill="#0d0f14"/>
+    <rect x="28" y="-120" width="44" height="135" rx="8" fill="#0d0f14"/>
+  </g>
+  <rect x="106" y="98" width="300" height="20" rx="10" fill="#7cc4ff"/>
+</g>
+</svg>
