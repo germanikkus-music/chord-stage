@@ -507,7 +507,12 @@ const SOUNDS = {
   organ:   { name: "Organ" }, strings: { name: "Strings" }, synth: { name: "Synth keys" },
 };
 // Wind instrument voices (Aerophone / EWI): one note at a time, loudness follows breath
-const WIND_SOUNDS = { recorder: "Recorder", flute: "Flute", clarinet: "Clarinet", keys: "Same as Sound" };
+const WIND_SOUNDS = { recorder: "Recorder", flute: "Flute", clarinet: "Clarinet", trumpet: "Trumpet", violin: "Violin",
+  sawlead: "Saw lead", windsynth: "Wind synth", windpad: "Wind pad", keys: "Same as Sound" };
+// Filters that open up as you blow harder (brass, leads), from `lo` to `hi` Hz
+const breathFilters = new Set();
+let breathLevel = 1;
+const breathHz = (b, lo, hi) => lo * Math.pow(hi / lo, Math.min(1, b));
 const mix = { volume: 0.8, tone: 0.7, reverb: 0.25, release: 0.5 };
 function initAudio() {
   if (ctx) return;
@@ -554,7 +559,9 @@ function synthOff(note) {
 }
 function synthKill(note) { const v = voices.get(note); if (v) { voices.delete(note); v.stop(0.02); } }
 
+let bfOwned = null;
 function makeVoice(note, vel, kind = S.sound) {
+  bfOwned = null;
   const t = ctx.currentTime, f = hz(note), g = ctx.createGain(), amp = 0.25 + 0.75 * (vel / 127);
   g.gain.value = 0; g.connect(WIND_SOUNDS[kind] ? windBus : master);
   const nodes = [];
@@ -590,6 +597,39 @@ function makeVoice(note, vel, kind = S.sound) {
     const ng = ctx.createGain(); ng.gain.setValueAtTime(cl ? 0.15 : 0.5, t); ng.gain.setTargetAtTime(cl ? 0.02 : 0.05, t + 0.02, 0.03);
     ns.connect(bp); bp.connect(ng); ng.connect(g); ns.start(t, Math.random()); nodes.push(ns);
     env = [[kind === "recorder" ? 0.015 : 0.04, 1], [0, 1]]; rel = 0.05 + mix.release * 0.15;
+  } else if (kind === "trumpet" || kind === "sawlead" || kind === "windsynth" || kind === "violin" || kind === "windpad") {
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.connect(g);
+    let lo, hi, vib = 0, vibRate = 5.2, mains = [];
+    if (kind === "trumpet") {
+      // Brass: saw + a bit of square, brighter the harder you blow, a small scoop into each note
+      mains = [osc("sawtooth", f, 0.55), osc("square", f, 0.18)];
+      mains.forEach(m => { m.o.detune.setValueAtTime(-35, t); m.o.detune.linearRampToValueAtTime(0, t + 0.07); });
+      lp.Q.value = 1.2; lo = f * 1.3; hi = Math.min(f * 11, 12000); vib = 0.004;
+    } else if (kind === "sawlead") {
+      mains = [osc("sawtooth", f, 0.4, -7), osc("sawtooth", f, 0.4, 7), osc("square", f / 2, 0.2)];
+      lp.Q.value = 4; lo = f * 2; hi = Math.min(f * 16, 14000); vib = 0.005;
+    } else if (kind === "windsynth") {
+      // Classic breath-controlled synth: square + saw through a resonant filter that follows the breath
+      mains = [osc("square", f, 0.35), osc("sawtooth", f, 0.35, 4)];
+      lp.Q.value = 9; lo = f * 0.9; hi = Math.min(f * 12, 12000); vib = 0.003;
+    } else if (kind === "violin") {
+      mains = [osc("sawtooth", f, 0.35, -5), osc("sawtooth", f, 0.35, 5), osc("sawtooth", f, 0.2, 0)];
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 250; hp.connect(lp);
+      mains.forEach(m => m.og.connect(hp)); mains = [];
+      lp.Q.value = 1.5; lo = f * 3; hi = Math.min(f * 7, 10000); vib = 0.007; vibRate = 5.6;
+    } else { // windpad
+      mains = [-12, -5, 0, 5, 12].map(d => osc("sawtooth", f, 0.16, d)); mains.push(osc("sine", f / 2, 0.3));
+      lp.Q.value = 0.8; lo = f * 1.5; hi = Math.min(f * 5, 8000);
+    }
+    mains.forEach(m => m.og.connect(lp));
+    if (vib) { // vibrato that fades in after the note settles
+      const lfo = osc("sine", vibRate, 0); lfo.og.gain.setValueAtTime(0, t + 0.25); lfo.og.gain.linearRampToValueAtTime(f * vib, t + 0.9);
+      nodes.filter(n => n.frequency && n !== lfo.o).forEach(o => lfo.og.connect(o.frequency));
+    }
+    const bf = { lp, lo, hi }; breathFilters.add(bf); bfOwned = bf;
+    lp.frequency.setValueAtTime(breathHz(breathLevel, lo, hi), t);
+    const atk = kind === "windpad" ? 0.25 : kind === "violin" ? 0.06 : 0.012;
+    env = [[atk, 1], [0, 1]]; rel = (kind === "windpad" ? 0.5 : 0.06) + mix.release * (kind === "windpad" ? 1 : 0.2);
   } else if (kind === "organ") {
     [[1, .5], [2, .3], [3, .15], [4, .12], [0.5, .25]].forEach(([r, a]) => osc("sine", f * r, a).og.connect(g));
     env = [[0.008, 0.8], [0, 0.8]]; rel = 0.06 + mix.release * 0.2;
@@ -609,6 +649,7 @@ function makeVoice(note, vel, kind = S.sound) {
     if (d) g.gain.setTargetAtTime(sus * level, when + a, d / 3);
   };
   start(t, amp);
+  const myBf = bfOwned;
   return {
     count: 1,
     restart: (vel2) => start(ctx.currentTime, 0.25 + 0.75 * vel2 / 127),
@@ -617,7 +658,7 @@ function makeVoice(note, vel, kind = S.sound) {
       g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now);
       g.gain.setTargetAtTime(0, now, r / 4);
       nodes.forEach(o => o.stop(now + r * 1.5 + 0.05));
-      setTimeout(() => g.disconnect(), (r * 1.5 + 0.2) * 1000);
+      setTimeout(() => { g.disconnect(); if (myBf) breathFilters.delete(myBf); }, (r * 1.5 + 0.2) * 1000);
     },
   };
 }
@@ -923,7 +964,11 @@ function fingerChordUp() {
 }
 function breath(v) {
   windBreath = true;
-  if (ctx) windBus.gain.setTargetAtTime(Math.pow(v / 127, 1.3), ctx.currentTime, 0.012);
+  breathLevel = v / 127;
+  if (ctx) {
+    windBus.gain.setTargetAtTime(Math.pow(breathLevel, 1.3), ctx.currentTime, 0.012);
+    breathFilters.forEach(b => b.lp.frequency.setTargetAtTime(breathHz(breathLevel, b.lo, b.hi), ctx.currentTime, 0.02));
+  }
   if (midiOut) midiOut.send([0xB2, 2, v]);
 }
 

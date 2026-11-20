@@ -21,7 +21,7 @@ Chord Stage can use a Roland Aerophone mini (or another wind controller) for the
 
 1. Pair it on the Mac: open **Audio MIDI Setup**, choose **Window → Show MIDI Studio**, click the **Bluetooth** button and connect the Aerophone. Chrome then sees it like any other MIDI input.
 2. Turn the Aerophone's own speaker down so only Chord Stage sounds.
-3. Choose **Horn** at the start, then pick a voice under **Horn sound**: Recorder, Flute, Clarinet, or Same as Sound. Use **Octave up/down** if it sits too high or low.
+3. Choose **Horn** at the start, then pick a voice under **Horn sound**: Recorder, Flute, Clarinet, Trumpet, Violin, Saw lead, Wind synth, Wind pad, or Same as Sound. Breath sets the volume of every horn sound. Trumpet, Saw lead and Wind synth also get brighter the harder you blow, and Wind synth has the resonant filter sweep of classic breath synths. Use **Octave up/down** if it sits too high or low.
 
 When the Aerophone is connected, the on-screen keyboard switches to **Aerophone fingering** diagrams, which follow Roland's AE-01 chart. There's a button to switch back, and one on the keyboard to switch over by hand.
 - **Now:** the notes of the chord that's playing, each drawn as a fingering. The root has a green border.
