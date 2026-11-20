@@ -17,6 +17,10 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 
 **Smooth voicing** (Piano, on by default) plays each chord in the inversion closest to the chord before it, so changes glide from one to the next instead of jumping up and down the keyboard, the way neo soul and gospel players voice-lead. The chord sits from E3 up and the bass note (or the slash-chord bass) sits in C2–B2 underneath. In a ii–V–I–vi–IV–V–I the notes move about a quarter as far as before. Untick it for plain root-position chords. Chords imported from MPC keep their exact voicings.
 
+## Strum
+
+**Strum** (Piano) rolls each chord from the bottom note up, like a classical pianist's rolled chord: Light (18 ms between notes), Medium (40 ms), Slow roll (80 ms) or Harp (140 ms). Let go early and the notes not yet played are skipped. Saved with each song. When Arp is on, Arp wins.
+
 ## Arp
 
 **Arp** (Piano) plays every chord one note at a time, in time with the **Tempo**, from any keyboard. Choose Up, Down, Up & down or Random; 1/8, 1/8 triplet or 1/16; and 1 or 2 octaves. A low root under the chord holds as the bass while the rest arpeggiates. With the beat playing, the notes line up with the drums. Arp settings are saved with each song.

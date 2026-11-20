@@ -215,6 +215,7 @@
   <div class="ctl horn-only"><label>Octave</label><span class="pair"><select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select></span></div>
   <div class="ctl horn-only"><label>Chords</label><span class="pair"><select id="windChords" title="Blowing the next chord's root note moves the progression on"><option value="silent">Root moves chords (silent)</option><option value="play">Root moves + plays chords</option><option value="fingers">One note = one chord (C = key)</option><option value="off">Melody only</option></select>
     <button id="windTune" title="Click, then finger C on the Aerophone and blow. Fixes an instrument whose transpose is set off C.">Tune</button></span></div>
+  <div class="ctl piano-only"><label>Strum</label><select id="strum" title="Roll each chord from the bottom note up"><option value="0">Off</option><option value="18">Light</option><option value="40">Medium</option><option value="80">Slow roll</option><option value="140">Harp</option></select></div>
   <div class="ctl piano-only"><label>Arp</label><span class="pair"><select id="arp" title="Chords play one note at a time, in time with the Tempo"><option value="off">Off</option><option value="up">Up</option><option value="down">Down</option><option value="updown">Up &amp; down</option><option value="random">Random</option></select>
     <select id="arpRate"><option value="2">1/8</option><option value="3">1/8 triplet</option><option value="4">1/16</option></select>
     <select id="arpOct"><option value="1">1 octave</option><option value="2">2 octaves</option></select></span></div>
@@ -349,7 +350,7 @@ const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
   windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
-  voiceLead: true, arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
+  voiceLead: true, strum: 0, arp: "off", arpRate: 4, arpOct: 1, beatStyle: "neosoul", bpm: 84, beatAuto: false, beatFills: true, beatLevel: 0.7, beatMidi: false }; // bassSplit: keys below it play bass (0 = off)
 const S = load(DEFAULTS);
 if (typeof S.windChords === "boolean") S.windChords = S.windChords ? "silent" : "off"; // was a checkbox
 delete S.followProg; // replaced by Sloppy mode (off by default)
@@ -728,6 +729,14 @@ function press(id, notes, vel, chord, tile, fromProgPad) {
   if (S.arp !== "off" && chord && notes.length > 1 && "kpm".includes(id[0])) {
     held.set(id, { notes: [], chord, tile, arpNotes: notes });
     arpStart(id, notes, vel);
+  } else if (+S.strum && chord && notes.length > 1) {
+    // Strum: roll the chord from the bottom up, like a classical pianist's rolled chord
+    const h = { notes: [], chord, tile, timers: [] };
+    held.set(id, h);
+    notes.slice().sort((a, b) => a - b).forEach((n, i) => {
+      if (!i) { h.notes.push(n); return outOn(n, vel); }
+      h.timers.push(setTimeout(() => { if (held.get(id) !== h) return; h.notes.push(n); outOn(n, Math.max(1, vel - i * 3)); }, i * S.strum));
+    });
   } else {
     held.set(id, { notes, chord, tile });
     notes.forEach(n => outOn(n, vel));
@@ -769,6 +778,7 @@ function release(id) {
   arpStop(id);
   const h = held.get(id); if (!h) return;
   held.delete(id);
+  if (h.timers) h.timers.forEach(clearTimeout);
   h.notes.forEach(outOff);
   render();
 }
@@ -1216,7 +1226,7 @@ function syncUI() {
   $("windTune").textContent = windLearn ? "Finger C and blow…" : S.windCal ? "Tuned " + (S.windCal > 0 ? "+" : "") + S.windCal : "Tune";
   $("windSound").value = S.windSound; $("windOct").value = String(S.windOct || 0);
   $("arp").value = S.arp; $("arpRate").value = S.arpRate; $("arpOct").value = S.arpOct;
-  $("voiceLead").checked = S.voiceLead;
+  $("voiceLead").checked = S.voiceLead; $("strum").value = S.strum;
   $("sevenths").checked = S.sevenths; $("bass").checked = S.bass; $("internal").checked = S.internal;
   $("split").textContent = learnSplit ? "Press a key…" : noteName(S.split);
   $("bassSplit").textContent = learnBass ? "Press top bass key…" : S.bassSplit ? "Up to " + noteName(S.bassSplit - 1) : "Off";
@@ -1249,6 +1259,7 @@ function setup() {
   bind("upperMode", t => S.upperMode = t.value);
   bind("sevenths", t => S.sevenths = t.checked);
   bind("arp", t => S.arp = t.value);
+  bind("strum", t => S.strum = +t.value);
   bind("voiceLead", t => { S.voiceLead = t.checked; prevUpper = null; });
   bind("arpRate", t => S.arpRate = +t.value);
   bind("arpOct", t => S.arpOct = +t.value);
@@ -1575,7 +1586,7 @@ function showBeat(pos) {
 
 // ---------- Set list ----------
 const SONG_FIELDS = ["key", "scale", "sound", "sevenths", "bass", "lowerMode", "upperMode", "split", "prog",
-  "bassSplit", "bassSound", "bassStyle", "sloppy", "voiceLead", "arp", "arpRate", "arpOct",
+  "bassSplit", "bassSound", "bassStyle", "sloppy", "voiceLead", "strum", "arp", "arpRate", "arpOct",
   "beatStyle", "bpm", "beatAuto", "beatFills"];
 const songOf = () => Object.fromEntries(SONG_FIELDS.map(f => [f, S[f]]));
 const current = () => S.setlist[S.song];
