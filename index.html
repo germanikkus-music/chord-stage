@@ -249,8 +249,10 @@
     <span class="spacer"></span>
     <button id="addMpc" title="Turn MPC .progression files into songs (you can pick many at once, or drop them on the page)">+ MPC progressions</button>
     <button id="export">Export backup</button><button id="import">Import</button>
-    <input type="file" id="importFile" accept=".json,application/json" hidden>
-    <input type="file" id="mpcFile" accept=".progression" multiple hidden>
+    <!-- No file-type filter: Android doesn't know .progression (and Drive may label .json as text),
+         so the picker would grey them out. The import code checks each file instead. -->
+    <input type="file" id="importFile" hidden>
+    <input type="file" id="mpcFile" multiple hidden>
   </div>
 </div>
 
