@@ -192,10 +192,10 @@
       <div class="zonelbl"><span style="--z:var(--bass)">Left hand</span><span style="--z:var(--chords)">One key = one chord</span><span style="--z:var(--setup)">Melody</span></div>
     </div>
     <table class="k">
-      <tr><td>Chord lock</td><td>Play full chord shapes; only the next chord’s root sounds.</td></tr>
-      <tr><td>Pads 1–7</td><td>The seven chords of the key (I ii iii IV V vi vii°).</td></tr>
+            <tr><td>Pads 1–7</td><td>The seven chords of the key (I ii iii IV V vi vii°).</td></tr>
       <tr><td>Knobs · wheel</td><td>Volume · Drums · Tone · Release · Sound · Key · Scale · Song. Mod wheel: Reverb. The boxes on screen show them.</td></tr>
-      <tr><td>Transport</td><td><b>Undo</b> clear loop · <b>Loop</b> loop on/off · <b>Stop/Play</b> beat · <b>Record</b> Rec · <b>⊕</b> Melody over. Change them in the MPK buttons row.</td></tr>
+      <tr><td>Buttons</td><td><b>Undo</b> clear loop · <b>Loop</b> · <b>Stop/Play</b> beat · <b>Record</b> Rec · <b>⊕</b> Melody over · <b>Bank −/+</b> song · <b>Tap Tempo</b> · encoder: tempo.</td></tr>
+      <tr><td>Pad bank B</td><td>◀ Chord · Chord ▶ · Restart · STOP ALL / Arp · Strum · Sloppy · Chord lock (on/off). Remap in the MPK buttons row.</td></tr>
       <tr><td>Pedal · ARP</td><td>Sustain holds chords, melody and left hand. ARP steps through each chord’s notes.</td></tr>
       <tr class="khead"><td colspan="2">Computer keyboard</td></tr>
       <tr><td><kbd class="k">←</kbd> <kbd class="k">→</kbd> <kbd class="k">PgUp</kbd> <kbd class="k">PgDn</kbd></td><td>Previous / next song (a page-turner pedal sends PgUp/PgDn).</td></tr>
@@ -265,7 +265,7 @@
     <div class="box" style="--c: var(--setup)"><h4>Horn mode (Aerophone)</h4>
       <p>Pick <b>Horn</b> at the start, or with the 🎹/🎺 button. <b>Horn sound</b>: Recorder, Flute, Clarinet, Trumpet, Violin, Saw lead, Wind synth, Wind pad or Same as Sound; breath sets the volume (and brightness on Trumpet, Saw lead and Wind synth). <b>Chords</b>: the next chord’s root moves the progression (silent or playing), <b>One note = one chord</b> (fingerings C to B play the key’s chords I–vii), or Melody only. <b>Tune</b> fixes a shifted transpose. The keyboard area shows the fingerings.</p></div>
     <div class="box" style="--c: var(--pads)"><h4>Beat</h4>
-      <p><b>▶ Beat</b> or <b>Space</b> starts and stops it. Pick a style (the number is its usual tempo), type a <b>Tempo</b> or press <b>Tap</b>. <b>Start on first chord</b>: the drums come in when you play. <b>Drums to MPC</b>: GM drum notes on channel 10. Each song saves its beat.</p></div>
+      <p><b>▶ Beat</b> or <b>Space</b> starts and stops it. Pick a style (the number is its usual tempo), type a <b>Tempo</b>, press <b>Tap</b>, or use the MPK’s <b>Tap Tempo</b> or encoder. <b>Start on first chord</b>: the drums come in when you play. <b>Drums to MPC</b>: GM drum notes on channel 10. Each song saves its beat.</p></div>
   </div>
   <div class="tips">
     <div class="box" style="--c: var(--chords)"><h4>Chord lock vs Sloppy mode</h4>
@@ -313,7 +313,7 @@
     { n: 26, c: 'prog', x: 1016, y: 802, w: 142, h: 42, bdx: 70, t: 'Sloppy mode', d: 'On: one finger on the next chord’s root plays the progression’s exact chord (D9, chords outside the key).' },
     { n: 27, c: 'prog', x: 27, y: 909, w: 651, h: 40, bdx: 662, bdy: 35, t: 'Song form', d: 'Repeats, key changes and a bridge, then back home (page 5). The highlighted part is where you are, with the pass (1/2).' },
   ]};
-  const pageC = { y0: 965, y1: 1739, el: 'crop3', legend: 'legend3', items: [
+  const pageC = { y0: 965, y1: 1776, el: 'crop3', legend: 'legend3', items: [
     { n: 28, c: 'nav', x: 14, y: 982, w: 300, h: 110, bdx: 310, bdy: 35, t: 'Now playing', d: 'The chord you are holding, with its number in the key (vi7 = the 6th chord). Played by hand, it names what you play.' },
     { n: 29, c: 'prog', x: 1030, y: 1030, w: 142, h: 150, bdx: -24, t: 'Up next · Left hand', d: 'The key, the next chord, which key to press (green), the chord after it, and the left-hand notes you hold.' },
     { n: 30, c: 'pads', x: 14, y: 1182, w: 1010, h: 130, t: 'Chord tiles · pads 1–7', d: 'The seven chords of the key, one per pad. The one you play fills in; the outlined one is next.' },
@@ -324,7 +324,7 @@
     { n: 35, c: 'chords', x: 387, y: 1418, w: 354, h: 134, bdy: 155, t: 'Chord keys', d: 'Blue underline. A4 is held and plays Am7. The pulsing green L is the key for the next chord (D for Dm7).' },
     { n: 36, c: 'setup', x: 741, y: 1418, w: 408, h: 134, bdy: 155, t: 'Melody keys', d: 'Your notes, kept in key. Red dots show every note that is sounding.' },
     { n: 37, c: 'nav', x: 14, y: 1575, w: 1152, h: 72, bdx: 1146, bdy: 22, t: 'Knobs K1–K8 · mod wheel', d: 'What each MPK knob is set to right now: volume (keys), drums, tone, release, sound, key, scale, song, and the mod wheel’s reverb. Turn one and its box updates.' },
-    { n: 38, c: 'loop', x: 14, y: 1647, w: 1152, h: 72, bdx: 1146, bdy: 52, t: 'MPK buttons', d: 'Which transport button does what. Tap one, then press any button that sends MIDI to change it; tap twice to clear.' },
+    { n: 38, c: 'loop', x: 14, y: 1647, w: 1152, h: 109, bdx: 1146, bdy: 52, t: 'MPK buttons & bank-B pads', d: 'Which button or bank-B pad does what. Tap an action, then press a button or pad to change it; tap twice to clear. The encoder sets the tempo.' },
   ]};
 
   function build(spec) {

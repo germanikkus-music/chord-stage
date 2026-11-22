@@ -120,6 +120,9 @@
   .btns { margin-top: 8px; align-items: center; }
   .btns button { font: inherit; font-size: 12px; color: var(--dim); background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 5px 9px; cursor: pointer; }
   .btns button.set { border-style: solid; }
+  #toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 50; background: #12392c; color: var(--tonic);
+    border: 1px solid var(--tonic); border-radius: 10px; padding: 8px 16px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  #toast.on { opacity: 1; }
   .btns button.learn { border: 1px solid var(--pre); color: var(--pre); background: #3a3110; }
 
   .setbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px;
@@ -1329,12 +1332,36 @@ const BUTTON_ACTIONS = [
   { id: "nextSong", label: "Song ▶", run: () => stepSong(1) },
   { id: "prevChord", label: "◀ Chord", run: () => stepProg(-1) },
   { id: "nextChord", label: "Chord ▶", run: () => stepProg(1) },
+  { id: "restart", label: "Restart", run: () => { progPos = 0; render(); toast("Back to the first chord"); } },
+  { id: "tap", label: "Tap tempo", run: () => { tapTempo(); renderKnobs(); toast("Tempo " + S.bpm); } },
+  { id: "arp", label: "Arp on/off", run: () => { if (S.arp !== "off") { lastArp = S.arp; S.arp = "off"; } else S.arp = lastArp || "up"; changed("Arp " + (S.arp === "off" ? "off" : S.arp)); } },
+  { id: "strum", label: "Strum on/off", run: () => { if (+S.strum) { lastStrum = +S.strum; S.strum = 0; } else S.strum = lastStrum || 40; changed("Strum " + (S.strum ? "on" : "off")); } },
+  { id: "sloppy", label: "Sloppy on/off", run: () => { S.sloppy = !S.sloppy; changed("Sloppy mode " + (S.sloppy ? "on" : "off")); } },
+  { id: "lock", label: "Chord lock on/off", run: () => { if (S.lowerMode === "lock") S.lowerMode = lastLower || "chords"; else { lastLower = S.lowerMode; S.lowerMode = "lock"; } changed("Chord lock " + (S.lowerMode === "lock" ? "on" : "off")); } },
 ];
-// MPK mini Plus II transport row: Undo 73, Loop 74, Stop/Play 76, Record 77, ⊕ 78
-const DEFAULT_BUTTONS = { 73: "clear", 74: "loop", 76: "beat", 77: "rec", 78: "melody" };
-const BUTTON_NAMES = { 73: "Undo", 74: "Loop", 76: "Stop/Play", 77: "Record", 78: "⊕" };
-if (!S.buttons || typeof S.buttons !== "object") S.buttons = { ...DEFAULT_BUTTONS };
+let lastArp = "up", lastStrum = 40, lastLower = "chords";
+function changed(msg) { syncUI(); save(); render(); toast(msg); }
+function toast(msg) {
+  let t = $("toast"); if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add("on"); clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("on"), 1300);
+}
+// MPK mini Plus II: transport row Undo 73, Loop 74, Stop/Play 76, Record 77, ⊕ 78; Bank − 80, Bank + 81,
+// Tap Tempo 82, encoder push 13. Pad bank B sends notes 44-51 on channel 10 (keys "p44"…"p51").
+const DEFAULT_BUTTONS = { 73: "clear", 74: "loop", 76: "beat", 77: "rec", 78: "melody", 80: "prevSong", 81: "nextSong", 82: "tap",
+  p44: "prevChord", p45: "nextChord", p46: "restart", p47: "stop", p48: "arp", p49: "strum", p50: "sloppy", p51: "lock" };
+const BUTTON_NAMES = { 73: "Undo", 74: "Loop", 76: "Stop/Play", 77: "Record", 78: "⊕", 80: "Bank −", 81: "Bank +", 82: "Tap Tempo", 13: "Encoder push",
+  p44: "Pad B1", p45: "Pad B2", p46: "Pad B3", p47: "Pad B4", p48: "Pad B5", p49: "Pad B6", p50: "Pad B7", p51: "Pad B8" };
+const NOT_BUTTONS = new Set([1, 14, 17, 64, 83]); // mod wheel, encoder turn, Shift, pedal, Pad Bank
+if (!S.buttons || typeof S.buttons !== "object") S.buttons = {};
+if (S.buttonsVer !== 2) { // add new defaults without undoing anything you changed
+  const used = new Set(Object.values(S.buttons));
+  for (const k in DEFAULT_BUTTONS) if (!(k in S.buttons) && !used.has(DEFAULT_BUTTONS[k])) S.buttons[k] = DEFAULT_BUTTONS[k];
+  S.buttonsVer = 2;
+}
 let learnBtn = null;
+function tempoTurn(d) {
+  S.bpm = Math.max(40, Math.min(220, S.bpm + d)); $("bpm").value = S.bpm; save(); renderKnobs(); toast("Tempo " + S.bpm);
+}
 function runButton(id) { const a = BUTTON_ACTIONS.find(a => a.id === id); if (a) { initAudio(); a.run(); } }
 function learnButton(cc) {
   for (const k in S.buttons) if (S.buttons[k] === learnBtn) delete S.buttons[k];
@@ -1343,9 +1370,9 @@ function learnButton(cc) {
 function renderButtons() {
   const el = $("btns"); if (!el) return;
   const ccOf = id => Object.keys(S.buttons).find(k => S.buttons[k] === id);
-  el.innerHTML = `<span style="background:none;border:0;padding:0">MPK buttons (tap one to change it, then press a button):</span>` + BUTTON_ACTIONS.map(a => {
+  el.innerHTML = `<span style="background:none;border:0;padding:0">MPK buttons &amp; bank-B pads (tap one to change it, then press a button or pad):</span>` + BUTTON_ACTIONS.map(a => {
     const cc = ccOf(a.id), on = learnBtn === a.id;
-    return `<button data-a="${a.id}" class="${on ? "learn" : cc ? "set" : ""}" title="${cc ? "Tap, then press a different button to change it. Tap twice to clear." : "Tap, then press the MPK button you want for this"}">${a.label}: <b>${on ? "press a button…" : cc ? BUTTON_NAMES[cc] || "CC " + cc : "–"}</b></button>`;
+    return `<button data-a="${a.id}" class="${on ? "learn" : cc ? "set" : ""}" title="${cc ? "Tap, then press a different button to change it. Tap twice to clear." : "Tap, then press the MPK button you want for this"}">${a.label}: <b>${on ? "press a button or bank-B pad…" : cc ? BUTTON_NAMES[cc] || (cc[0] === "p" ? "Note " + cc.slice(1) : "CC " + cc) : "–"}</b></button>`;
   }).join("");
   el.querySelectorAll("button").forEach(b => b.onclick = () => {
     const id = b.dataset.a;
@@ -1381,11 +1408,17 @@ function onMidi(e) {
   }
   if (learnSplit && type === 0x90 && d2 > 0) { S.split = d1; learnSplit = false; save(); syncUI(); render(); return; }
   if (learnBass && type === 0x90 && d2 > 0 && ch !== 10) { S.bassSplit = d1 + 1; learnBass = false; save(); syncUI(); render(); return; }
+  // Pad bank B (notes 44-51 on channel 10) can be action pads
+  if (ch === 10 && d1 >= 44 && d1 <= 51 && (type === 0x90 || type === 0x80)) {
+    if (learnBtn && type === 0x90 && d2 > 0) return learnButton("p" + d1);
+    if (S.buttons["p" + d1]) { if (type === 0x90 && d2 > 0) runButton(S.buttons["p" + d1]); return; }
+  }
   if (type === 0x90 && d2 > 0) { seen(d1, ch); ch === 10 ? padDown(d1 - 36, d2) : keyDown(d1, d2); }
   else if (type === 0x80 || type === 0x90) { ch === 10 ? release("p" + (d1 - 36)) : bassHeld.has(d1) || held.has("b" + d1) ? bassUp(d1) : release("k" + d1); }
   else if (type === 0xB0) {
-    if (learnBtn && d2 > 0 && d1 !== 64 && d1 !== 1 && !(d1 >= 24 && d1 <= 31)) return learnButton(d1);
-    if (S.buttons[d1] && d1 !== 64) { if (d2 > 0) runButton(S.buttons[d1]); return; }
+    if (d1 === 14) return tempoTurn(d2 < 64 ? d2 : d2 - 128); // the big encoder sets the tempo
+    if (learnBtn && d2 > 0 && !NOT_BUTTONS.has(d1) && !(d1 >= 24 && d1 <= 31)) return learnButton(String(d1));
+    if (S.buttons[d1] && !NOT_BUTTONS.has(d1)) { if (d2 > 0) runButton(S.buttons[d1]); return; }
     if (d1 === 64) { d2 >= 64 ? (sustain = true) : releasePedal(); }
     else if (d1 === 1) { mix.reverb = d2 / 127; applyMix(); renderKnobs(); } // mod wheel = reverb
     else if (d1 >= 24 && d1 <= 31) knob(d1, d2);
@@ -1796,7 +1829,7 @@ function render() {
 function renderKnobs() {
   renderButtons();
   $("knobs").innerHTML = KNOBS.map((k, i) => `<span>K${i + 1} ${k.label}: <b>${k.show()}</b></span>`).join("")
-    + `<span>Mod wheel Reverb: <b>${pct(mix.reverb)}</b></span>`;
+    + `<span>Mod wheel Reverb: <b>${pct(mix.reverb)}</b></span><span>Encoder Tempo: <b>${S.bpm}</b></span>`;
 }
 function buildKeyboard() {
   const kb = $("kb"); kb.innerHTML = "";

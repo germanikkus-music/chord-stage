@@ -29,19 +29,26 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 
 K1 Volume (keys) · K2 Drums (the same as the Drums level slider, saved per song) · K3 Tone · K4 Release · K5 Sound · K6 Key · K7 Scale · K8 Song. The **mod wheel** sets Reverb. The boxes under the keyboard show each one's setting.
 
-## MPK buttons
+## MPK buttons, pads and encoder
 
-The MPK mini Plus II's five transport buttons work right away:
+These work right away on the MPK mini Plus II:
 
-| Button | Does |
+| Control | Does |
 |---|---|
 | Undo | ✕ Clear the loop |
 | Loop | ▶ Loop on/off |
 | Stop/Play | ▶ Beat start/stop |
 | Record | ⏺ Rec start/stop |
 | ⊕ | 🎵 Melody over on/off |
+| Bank − / Bank + | Previous / next song |
+| Tap Tempo | Tap in the tempo (2 or more taps) |
+| Encoder (turn) | Tempo, 1 BPM per click |
+| Pad bank B, pads 1–4 | ◀ Chord · Chord ▶ · Restart · STOP ALL |
+| Pad bank B, pads 5–8 | Arp on/off · Strum on/off · Sloppy mode on/off · Chord lock on/off |
 
-The **MPK buttons** row under the knob boxes shows the mapping. Tap an action (Beat, Rec, Loop, Clear loop, Melody over, STOP ALL, ◀ Song, Song ▶, ◀ Chord, Chord ▶), then press any button that sends a MIDI CC, on the MPK or another keyboard, to put it there. Tap an action twice to clear it. The mapping is saved in the browser, not per song. The MPK's other buttons (ARP, Tap tempo, Note Repeat, Octave and so on) send nothing, so they can't be mapped.
+Press **PAD BANK A/B** to switch the pads to bank B; bank A plays chords as before. A short message at the top of the screen confirms what changed.
+
+The **MPK buttons & bank-B pads** row under the knob boxes shows the mapping. Tap an action, then press any button that sends a MIDI CC (on the MPK or another keyboard) or a bank-B pad to put it there; tap an action twice to clear it. The encoder push and Shift are free; the encoder push can be assigned. The mapping is saved in the browser, not per song. OCT −/+, ARP, LATCH, CHORDS, SCALES, NOTE REPEAT and PLUGIN/DAW only change the MPK itself and send nothing.
 
 ## Stage view
 
