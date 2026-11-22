@@ -678,6 +678,7 @@ function applyMix() {
   master.gain.setTargetAtTime(mix.volume * 0.35, t, 0.02);
   tone.frequency.setTargetAtTime(400 * Math.pow(45, mix.tone), t, 0.02);
   wet.gain.setTargetAtTime(mix.reverb * 0.9, t, 0.02);
+  try { if (beat.bus) drumBus(); } catch {} // K1 Volume turns the drums up and down too
 }
 const hz = n => 440 * Math.pow(2, (n - 69) / 12);
 
@@ -1861,7 +1862,8 @@ function drumBus() {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     beat.noise = b;
   }
-  beat.bus.gain.setTargetAtTime(S.beatLevel * 0.9, ctx.currentTime, 0.02);
+  // Drums level is the mix against the keys; K1 Volume scales both (80%, the default, leaves them as set)
+  beat.bus.gain.setTargetAtTime(S.beatLevel * 0.9 * mix.volume / 0.8, ctx.currentTime, 0.02);
   return beat.bus;
 }
 // Little synth helpers: an envelope, a noise burst, a pitched blip
