@@ -117,6 +117,10 @@
   .knobs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--dim); }
   .knobs span { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; }
   .knobs b { color: var(--text); font-weight: 600; }
+  .btns { margin-top: 8px; align-items: center; }
+  .btns button { font: inherit; font-size: 12px; color: var(--dim); background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 5px 9px; cursor: pointer; }
+  .btns button.set { border-style: solid; }
+  .btns button.learn { border: 1px solid var(--pre); color: var(--pre); background: #3a3110; }
 
   .setbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
@@ -244,7 +248,7 @@
   body.compact #nowName { font-size: clamp(56px, 17vw, 128px); }
   body.compact .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   body.compact .tile .name { font-size: clamp(15px, 4.4vw, 28px); }
-  body.compact .legend, body.compact .knobs, body.compact .kbwrap:not(#recWrap) { display: none !important; }
+  body.compact .legend, body.compact .knobs, body.compact .btns, body.compact .kbwrap:not(#recWrap) { display: none !important; }
   body.compact #recWrap .kbhead { display: none; }
   @media (min-width: 900px) { body.compact .grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
   @media (max-width: 520px) {
@@ -401,6 +405,7 @@
 </div>
 
 <div class="knobs" id="knobs"></div>
+<div class="knobs btns" id="btns"></div>
 
 <script>
 "use strict";
@@ -1312,6 +1317,43 @@ function knob(cc, val) {
     if (steps) { knobAcc[cc] -= steps * 4; k.step(Math.sign(steps)); } }
   renderKnobs();
 }
+// MPK (or any controller) buttons that send a CC: tap an action, press the button, and it's mapped
+const BUTTON_ACTIONS = [
+  { id: "beat", label: "Beat", run: () => beatButton() },
+  { id: "rec", label: "Rec", run: () => loopRecButton() },
+  { id: "loop", label: "Loop", run: () => { if (loop.len) $("loopPlay").click(); } },
+  { id: "clear", label: "Clear loop", run: () => { if (loop.state !== "rec") loopClear(); } },
+  { id: "melody", label: "Melody over", run: () => setMelodyOver(!melodyOver) },
+  { id: "stop", label: "STOP ALL", run: () => panic() },
+  { id: "prevSong", label: "◀ Song", run: () => stepSong(-1) },
+  { id: "nextSong", label: "Song ▶", run: () => stepSong(1) },
+  { id: "prevChord", label: "◀ Chord", run: () => stepProg(-1) },
+  { id: "nextChord", label: "Chord ▶", run: () => stepProg(1) },
+];
+// MPK mini Plus II transport row: Undo 73, Loop 74, Stop/Play 76, Record 77, ⊕ 78
+const DEFAULT_BUTTONS = { 73: "clear", 74: "loop", 76: "beat", 77: "rec", 78: "melody" };
+const BUTTON_NAMES = { 73: "Undo", 74: "Loop", 76: "Stop/Play", 77: "Record", 78: "⊕" };
+if (!S.buttons || typeof S.buttons !== "object") S.buttons = { ...DEFAULT_BUTTONS };
+let learnBtn = null;
+function runButton(id) { const a = BUTTON_ACTIONS.find(a => a.id === id); if (a) { initAudio(); a.run(); } }
+function learnButton(cc) {
+  for (const k in S.buttons) if (S.buttons[k] === learnBtn) delete S.buttons[k];
+  S.buttons[cc] = learnBtn; learnBtn = null; save(); renderButtons();
+}
+function renderButtons() {
+  const el = $("btns"); if (!el) return;
+  const ccOf = id => Object.keys(S.buttons).find(k => S.buttons[k] === id);
+  el.innerHTML = `<span style="background:none;border:0;padding:0">MPK buttons (tap one to change it, then press a button):</span>` + BUTTON_ACTIONS.map(a => {
+    const cc = ccOf(a.id), on = learnBtn === a.id;
+    return `<button data-a="${a.id}" class="${on ? "learn" : cc ? "set" : ""}" title="${cc ? "Tap, then press a different button to change it. Tap twice to clear." : "Tap, then press the MPK button you want for this"}">${a.label}: <b>${on ? "press a button…" : cc ? BUTTON_NAMES[cc] || "CC " + cc : "–"}</b></button>`;
+  }).join("");
+  el.querySelectorAll("button").forEach(b => b.onclick = () => {
+    const id = b.dataset.a;
+    if (learnBtn === id) { for (const k in S.buttons) if (S.buttons[k] === id) delete S.buttons[k]; learnBtn = null; save(); }
+    else learnBtn = id;
+    renderButtons();
+  });
+}
 function cycle(prop, list, d) { S[prop] = list[mod(list.indexOf(S[prop]) + d, list.length)]; syncUI(); save(); render(); }
 function setKey(k) { S.key = k; syncUI(); save(); render(); }
 
@@ -1342,6 +1384,8 @@ function onMidi(e) {
   if (type === 0x90 && d2 > 0) { seen(d1, ch); ch === 10 ? padDown(d1 - 36, d2) : keyDown(d1, d2); }
   else if (type === 0x80 || type === 0x90) { ch === 10 ? release("p" + (d1 - 36)) : bassHeld.has(d1) || held.has("b" + d1) ? bassUp(d1) : release("k" + d1); }
   else if (type === 0xB0) {
+    if (learnBtn && d2 > 0 && d1 !== 64 && d1 !== 1 && !(d1 >= 24 && d1 <= 31)) return learnButton(d1);
+    if (S.buttons[d1] && d1 !== 64) { if (d2 > 0) runButton(S.buttons[d1]); return; }
     if (d1 === 64) { d2 >= 64 ? (sustain = true) : releasePedal(); }
     else if (d1 >= 24 && d1 <= 31) knob(d1, d2);
   }
@@ -1749,6 +1793,7 @@ function render() {
   renderKnobs();
 }
 function renderKnobs() {
+  renderButtons();
   $("knobs").innerHTML = KNOBS.map((k, i) => `<span>K${i + 1} ${k.label}: <b>${k.show()}</b></span>`).join("");
 }
 function buildKeyboard() {

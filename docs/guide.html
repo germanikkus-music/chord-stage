@@ -71,8 +71,9 @@
   .zonelbl span { color: var(--z); font-weight: 700; }
   .caption { color: var(--dim); font-size: 9.5px; margin-top: -2px; }
   table.k { border-collapse: collapse; width: 100%; font-size: 10.5px; }
-  table.k td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.k td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
   table.k td:first-child { white-space: nowrap; width: 1%; }
+  table.k tr.khead td { padding-top: 10px; color: var(--dim); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; }
   kbd.k { font: 600 10px ui-monospace, Menlo, monospace; border: 1px solid #3a4256; border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: #181c26; }
 
   /* Annotated screenshots */
@@ -191,14 +192,15 @@
       <div class="zonelbl"><span style="--z:var(--bass)">Left hand</span><span style="--z:var(--chords)">One key = one chord</span><span style="--z:var(--setup)">Melody</span></div>
     </div>
     <table class="k">
-      <tr><td>Chord lock</td><td>Lower keys → Chord lock: play full chord shapes; only the next chord’s root makes sound.</td></tr>
-      <tr><td>Pads 1–7</td><td>The seven chords of the key (I ii iii IV V vi vii°). The matching tile on screen lights up.</td></tr>
-      <tr><td>Knobs 1–4</td><td>Volume · Tone · Reverb · Release (the K1–K8 boxes on screen show them).</td></tr>
-      <tr><td>Knobs 5–8</td><td>Sound · Key · Scale · Song (turn to step through the set list).</td></tr>
-      <tr><td>Sustain pedal</td><td>Holds chords, melody and the piano left hand.</td></tr>
-      <tr><td><kbd class="k">←</kbd> <kbd class="k">→</kbd> <kbd class="k">PgUp</kbd> <kbd class="k">PgDn</kbd></td><td>Previous / next song. A Bluetooth page-turner pedal sends Page Up/Down.</td></tr>
-      <tr><td><kbd class="k">↑</kbd> <kbd class="k">↓</kbd></td><td>Step back / ahead one chord. The <b>ARP</b> button works too.</td></tr>
-      <tr><td><kbd class="k">Space</kbd> <kbd class="k">R</kbd> <kbd class="k">L</kbd> <kbd class="k">M</kbd></td><td>Beat on/off · Rec · Loop on/off · Melody over.</td></tr>
+      <tr><td>Chord lock</td><td>Play full chord shapes; only the next chord’s root sounds.</td></tr>
+      <tr><td>Pads 1–7</td><td>The seven chords of the key (I ii iii IV V vi vii°).</td></tr>
+      <tr><td>Knobs 1–8</td><td>Volume · Tone · Reverb · Release · Sound · Key · Scale · Song. The K1–K8 boxes show them.</td></tr>
+      <tr><td>Transport</td><td><b>Undo</b> clear loop · <b>Loop</b> loop on/off · <b>Stop/Play</b> beat · <b>Record</b> Rec · <b>⊕</b> Melody over. Change them in the MPK buttons row.</td></tr>
+      <tr><td>Pedal · ARP</td><td>Sustain holds chords, melody and left hand. ARP steps through each chord’s notes.</td></tr>
+      <tr class="khead"><td colspan="2">Computer keyboard</td></tr>
+      <tr><td><kbd class="k">←</kbd> <kbd class="k">→</kbd> <kbd class="k">PgUp</kbd> <kbd class="k">PgDn</kbd></td><td>Previous / next song (a page-turner pedal sends PgUp/PgDn).</td></tr>
+      <tr><td><kbd class="k">↑</kbd> <kbd class="k">↓</kbd></td><td>Step back / ahead one chord.</td></tr>
+      <tr><td><kbd class="k">Space</kbd> <kbd class="k">R</kbd> <kbd class="k">L</kbd> <kbd class="k">M</kbd></td><td>Beat · Rec · Loop · Melody over.</td></tr>
       <tr><td><kbd class="k">Esc</kbd></td><td>STOP ALL: cuts every note right away.</td></tr>
     </table>
   </div>
@@ -261,7 +263,7 @@
     <div class="box" style="--c: var(--prog)"><h4>Song form</h4>
       <p>Under the progression. Plays it as a song: <b>3×, then down a step</b>, <b>lift a half step (twice)</b>, <b>up a 4th</b>, <b>a bridge</b>, or <b>2×, bridge, down a step, home</b>. <b>Custom…</b>: e.g. <code>Main x3, Main -2, Bridge, Main +1</code> (x3 repeats, +2/−2 moves half steps, Bridge uses your [Bridge] or writes one). The bar shows the part and pass you’re on.</p></div>
     <div class="box" style="--c: var(--loop)"><h4>Record &amp; loop</h4>
-      <p><b>⏺ Rec</b> (R) records what Chord Stage plays. With the beat on it starts on bar 1 and keeps whole bars; without it, it starts on your first note. A waiting Rec blinks yellow and cancels itself after 20 s with no notes. Press it again and the loop plays (70% volume) so you can solo. <b>▶ Loop</b> (L) starts/stops, <b>✕ Clear</b> erases, <b>⬇ MIDI file</b> saves it for the MPC. The loop isn’t saved with the song.</p></div>
+      <p><b>⏺ Rec</b> (R) records what Chord Stage plays. With the beat on it starts on bar 1 and keeps whole bars; without it, it starts on your first note. A waiting Rec blinks yellow and cancels itself after 20 s with no notes. Press it again and the loop plays (70% volume) so you can solo. <b>▶ Loop</b> (L) starts/stops, <b>✕ Clear</b> erases, <b>⬇ MIDI file</b> saves it for the MPC. On the MPK: <b>Record</b>, <b>Loop</b>, <b>Undo</b> (clear) and <b>⊕</b> (Melody over).</p></div>
     <div class="box" style="--c: var(--loop)"><h4>Melody over</h4>
       <p><b>🎵 Melody over</b> (M) turns the whole keyboard into a solo instrument while the loop plays: every key plays one note in the key, an octave up, no chords. Up next shows a reminder while it’s on, and Clear or a new Rec turns it off.</p></div>
     <div class="box" style="--c: var(--nav)"><h4>Stage view</h4>
@@ -311,7 +313,7 @@
     { n: 26, c: 'prog', x: 1016, y: 802, w: 142, h: 42, bdx: 70, t: 'Sloppy mode', d: 'On: one finger on the next chord’s root plays the progression’s exact chord (D9, chords outside the key).' },
     { n: 27, c: 'prog', x: 27, y: 909, w: 651, h: 40, bdx: 662, bdy: 35, t: 'Song form', d: 'Repeats, key changes and a bridge, then back home (page 5). The highlighted part is where you are, with the pass (1/2).' },
   ]};
-  const pageC = { y0: 965, y1: 1631, el: 'crop3', legend: 'legend3', items: [
+  const pageC = { y0: 965, y1: 1703, el: 'crop3', legend: 'legend3', items: [
     { n: 28, c: 'nav', x: 14, y: 982, w: 300, h: 110, bdx: 310, bdy: 35, t: 'Now playing', d: 'The chord you are holding, with its number in the key (vi7 = the 6th chord). Played by hand, it names what you play.' },
     { n: 29, c: 'prog', x: 1030, y: 1030, w: 142, h: 150, bdx: -24, t: 'Up next · Left hand', d: 'The key, the next chord, which key to press (green), the chord after it, and the left-hand notes you hold.' },
     { n: 30, c: 'pads', x: 14, y: 1182, w: 1010, h: 130, t: 'Chord tiles · pads 1–7', d: 'The seven chords of the key, one per pad. The one you play fills in; the outlined one is next.' },
@@ -322,6 +324,7 @@
     { n: 35, c: 'chords', x: 387, y: 1418, w: 354, h: 134, bdy: 155, t: 'Chord keys', d: 'Blue underline. A4 is held and plays Am7. The pulsing green L is the key for the next chord (D for Dm7).' },
     { n: 36, c: 'setup', x: 741, y: 1418, w: 408, h: 134, bdy: 155, t: 'Melody keys', d: 'Your notes, kept in key. Red dots show every note that is sounding.' },
     { n: 37, c: 'nav', x: 14, y: 1575, w: 1140, h: 36, bdx: 1144, bdy: 28, t: 'Knobs K1–K8', d: 'What each MPK knob is set to right now: volume, tone, reverb, release, sound, key, scale, song. Turn one and its box updates.' },
+    { n: 38, c: 'loop', x: 14, y: 1611, w: 1152, h: 72, bdx: 1146, bdy: 52, t: 'MPK buttons', d: 'Which transport button does what. Tap one, then press any button that sends MIDI to change it; tap twice to clear.' },
   ]};
 
   function build(spec) {

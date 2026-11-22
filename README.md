@@ -25,6 +25,20 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - The loop plays a little softer than you (70%), and your sustain pedal only holds what you play, not the loop.
 - The loop isn't saved with the song; download the MIDI file to keep it. Bass-guitar keys and the Aerophone aren't recorded.
 
+## MPK buttons
+
+The MPK mini Plus II's five transport buttons work right away:
+
+| Button | Does |
+|---|---|
+| Undo | ✕ Clear the loop |
+| Loop | ▶ Loop on/off |
+| Stop/Play | ▶ Beat start/stop |
+| Record | ⏺ Rec start/stop |
+| ⊕ | 🎵 Melody over on/off |
+
+The **MPK buttons** row under the knob boxes shows the mapping. Tap an action (Beat, Rec, Loop, Clear loop, Melody over, STOP ALL, ◀ Song, Song ▶, ◀ Chord, Chord ▶), then press any button that sends a MIDI CC, on the MPK or another keyboard, to put it there. Tap an action twice to clear it. The mapping is saved in the browser, not per song. The MPK's other buttons (ARP, Tap tempo, Note Repeat, Octave and so on) send nothing, so they can't be mapped.
+
 ## Stage view
 
 On a phone, Chord Stage switches to **Stage view** by itself: the song, the big chord with Up next, the progression and song form, the chord tiles, Beat, Rec / Loop and STOP ALL, in that order, with the settings hidden. On a tablet or computer, press **▣ Stage view** next to the Piano/Horn button. **⚙ All controls** brings everything back.
