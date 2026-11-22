@@ -1299,8 +1299,8 @@ function padDown(i, vel, id = "p" + i) {
 const knobAcc = {};
 const KNOBS = [
   { label: "Volume",  turn: d => { mix.volume = clamp(mix.volume + d * 0.02); applyMix(); }, show: () => pct(mix.volume) },
+  { label: "Drums",   turn: d => { S.beatLevel = clamp(S.beatLevel + d * 0.02); $("beatLevel").value = S.beatLevel; if (beat.bus) drumBus(); save(); }, show: () => pct(S.beatLevel) },
   { label: "Tone",    turn: d => { mix.tone = clamp(mix.tone + d * 0.02); applyMix(); },     show: () => pct(mix.tone) },
-  { label: "Reverb",  turn: d => { mix.reverb = clamp(mix.reverb + d * 0.02); applyMix(); }, show: () => pct(mix.reverb) },
   { label: "Release", turn: d => { mix.release = clamp(mix.release + d * 0.02); },           show: () => pct(mix.release) },
   { label: "Sound",   step: d => cycle("sound", Object.keys(SOUNDS), d), show: () => SOUNDS[S.sound].name },
   { label: "Key",     step: d => setKey(mod(S.key + d, 12)),          show: () => KEYS[S.key] },
@@ -1387,6 +1387,7 @@ function onMidi(e) {
     if (learnBtn && d2 > 0 && d1 !== 64 && d1 !== 1 && !(d1 >= 24 && d1 <= 31)) return learnButton(d1);
     if (S.buttons[d1] && d1 !== 64) { if (d2 > 0) runButton(S.buttons[d1]); return; }
     if (d1 === 64) { d2 >= 64 ? (sustain = true) : releasePedal(); }
+    else if (d1 === 1) { mix.reverb = d2 / 127; applyMix(); renderKnobs(); } // mod wheel = reverb
     else if (d1 >= 24 && d1 <= 31) knob(d1, d2);
   }
   else if (type === 0xE0 && midiOut) midiOut.send([0xE0, d1, d2]);
@@ -1794,7 +1795,8 @@ function render() {
 }
 function renderKnobs() {
   renderButtons();
-  $("knobs").innerHTML = KNOBS.map((k, i) => `<span>K${i + 1} ${k.label}: <b>${k.show()}</b></span>`).join("");
+  $("knobs").innerHTML = KNOBS.map((k, i) => `<span>K${i + 1} ${k.label}: <b>${k.show()}</b></span>`).join("")
+    + `<span>Mod wheel Reverb: <b>${pct(mix.reverb)}</b></span>`;
 }
 function buildKeyboard() {
   const kb = $("kb"); kb.innerHTML = "";

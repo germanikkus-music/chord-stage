@@ -25,6 +25,10 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - The loop plays a little softer than you (70%), and your sustain pedal only holds what you play, not the loop.
 - The loop isn't saved with the song; download the MIDI file to keep it. Bass-guitar keys and the Aerophone aren't recorded.
 
+## MPK knobs
+
+K1 Volume (keys) · K2 Drums (the same as the Drums level slider, saved per song) · K3 Tone · K4 Release · K5 Sound · K6 Key · K7 Scale · K8 Song. The **mod wheel** sets Reverb. The boxes under the keyboard show each one's setting.
+
 ## MPK buttons
 
 The MPK mini Plus II's five transport buttons work right away:
