@@ -387,6 +387,7 @@
   <button id="prev" class="big" title="Previous song (←)">◀</button>
   <div class="songnow"><span id="songPos"></span><b id="songName"></b><span id="songNext"></span></div>
   <button id="next" class="big" title="Next song (→)">▶</button>
+  <button id="freePlay" title="Leave the set list and just play: every key plays its own chord in the key, no progression. ◀ ▶ go back to your songs.">Free play</button>
   <div class="spacer"></div>
   <button id="saveSong" class="hot" hidden>Save changes to song</button>
   <button id="saveNew">+ Save as new song</button>
@@ -2461,6 +2462,12 @@ function initSettings() {
   document.querySelectorAll("#settings [data-tab]").forEach(b => b.onclick = () => openSettings(b.dataset.tab));
   $("setBtn").onclick = () => openSettings("look");
   $("editList").onclick = () => openSettings("setlist");
+  // Free play: keep the key, scale and sound, drop the song and its progression (the song itself is untouched)
+  $("freePlay").onclick = () => {
+    S.song = -1; S.prog = ""; S.form = ""; progPos = 0; $("prog").value = "";
+    document.querySelector(".progbox").classList.add("empty");
+    syncUI(); save(); render(); toast("Free play: every key plays its own chord in " + KEYS[S.key] + " " + SCALES[S.scale].name);
+  };
   $("setClose").onclick = closeSettings; document.querySelector(".setshade").onclick = closeSettings;
   document.querySelectorAll(".themes [data-theme]").forEach(b => b.onclick = () => { S.theme = b.dataset.theme; save(); applyLook(); });
   $("skinPick").onclick = () => $("skinFile").click();
@@ -2511,6 +2518,7 @@ function renderSet() {
   const n = S.setlist.length, song = current(), next = S.setlist[S.song + 1];
   $("songPos").textContent = song ? `Song ${S.song + 1} of ${n}` : n ? `${n} song${n > 1 ? "s" : ""} — press ▶ to start` : "No set list yet";
   $("songName").textContent = song ? song.name : "Free play";
+  $("freePlay").hidden = !song;
   $("songNext").textContent = next ? "Next: " + next.name : song ? "Last song" : "";
   $("prev").disabled = !song || S.song === 0;
   $("next").disabled = !n || S.song === n - 1;

@@ -54,6 +54,10 @@ The **MPK buttons & bank-B pads** row under the knob boxes shows the mapping. Ta
 
 The PopuPiano's six bars on the left play **bass notes in the song's key**: bar 1 is the key's root, bar 2 the 2nd note of the scale, and so on up to bar 6, climbing like a scale (in C major: C D E F G A; in A minor: A B C D E F). They always play a real bass: **Deep bass** (a round, heavy synth bass that still comes through on small speakers), or **Bass guitar** if that's picked under **Bass keys**; the Bass keys style (single, octaves or root + 5th) applies too. They work whether or not a bass zone is set on the keyboard, and the Bass keys sound and style menus show whenever a PopuPiano is connected. For the deepest sound use **Single** notes: **Octaves** adds the note an octave up, which makes the bass sound higher. The bars send C–A on MIDI channel 2; Chord Stage recognises them by the PopuPiano's name.
 
+## Free play
+
+**Free play** on the song bar leaves the set list and just plays: the key, scale and sound stay, the progression goes, and every key plays its own chord in the key. The song itself isn't changed. ◀ ▶ (or Bank −/+) go back into your songs.
+
 ## ⚙ Settings, themes and skins
 
 The front page keeps what you use while playing: key, scale, sound, the key modes, Strum, Arp, Smooth voicing, the song bar, Beat, Rec / Loop, the progression and song form, the chord tiles and the keyboard. Everything you set once is under **⚙ Settings** (top right; **Edit set list** opens it too):
