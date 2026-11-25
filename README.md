@@ -74,7 +74,7 @@ Esc closes Settings (and still stops every note).
 
 Progressions written in Roman numerals follow the key by themselves. Progressions written with chord names (most MPC charts: `Bb Eb F7`) move with the key too: pick a new **Key** and Chord Stage asks whether to transpose the song. **OK** moves every chord and its voicing (the shorter way round), spelling chords outside the key with flats (Bb, Ab, Db in C major). **Cancel** keeps the chords and only changes the key, which is what you want when the key was guessed wrong. Knob K6 always transposes.
 
-**Up next helps when something doesn't line up.** If a chart's chords mostly sit outside the Key (say the chords are in Db and the Key says C), Up next says so and offers **Use Db (keep chords)**. "Press Db4" names the exact key, octave included. If the next chord's root isn't on your chord keys at all, it says so and points to **⚙ Settings › Keys setup** to widen them.
+**Up next helps when something doesn't line up.** If a chart's chords mostly sit outside the Key (say the chords are in Db and the Key says C), Up next says so and offers **Use Db (keep chords)**. "Press Db4" names the exact key, octave included. If the next chord's root isn't on your chord keys at all, it says so, with a **Chord keys C3–B4** button that moves the bass keys below C3 and the melody keys up to C5 in one tap (or set them yourself in **⚙ Settings › Keys setup**).
 
 ## MPC patterns (.mpcpattern)
 

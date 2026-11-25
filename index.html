@@ -2011,7 +2011,7 @@ function render() {
   const reach = want && S.inst !== "horn" && playsFromKeys(want.chord) ? nextKeyFor(want.chord.rootPc) : null;
   const pressTxt = want ? (want.chord.name.match(/^[A-G][#b]?/) || [pcName(want.chord.rootPc)])[0] + (reach != null ? Math.floor(reach / 12) - 1 : "") : "";
   const noReach = want && S.inst !== "horn" && playsFromKeys(want.chord) && reach == null
-    ? `<br><span class="warnhint">${pressTxt} isn't on your chord keys. Widen them in ⚙ Settings › Keys setup.</span>` : "";
+    ? `<br><span class="warnhint">${pressTxt} isn't on your chord keys.</span><button class="usekey" data-widen="1">Chord keys C3–B4</button>` : "";
   const mism = keyMismatch(steps);
   $("nowHint").innerHTML = (mism ? `<span class="warnhint">These chords are in ${KEYS[mism.k]} ${SCALES[mism.sc].name}, the Key says ${KEYS[S.key]}.</span>` +
       `<button class="usekey" data-k="${mism.k}" data-sc="${mism.sc}">Use ${KEYS[mism.k]} (keep chords)</button><br>` : "") +
@@ -2457,6 +2457,12 @@ function initSettings() {
   // "Use Db (keep chords)" under Up next: change the key to fit the chart without moving its chords
   $("nowHint").addEventListener("click", e => {
     const b = e.target.closest(".usekey"); if (!b) return;
+    if (b.dataset.widen) { // chord keys from C3 up to B4: bass keys end below C3, melody starts at C5
+      if (S.bassSplit > 48) S.bassSplit = 48;
+      if (S.split < 72) S.split = 72;
+      if (S.lowerMode !== "chords" && S.lowerMode !== "lock") S.lowerMode = "chords";
+      syncUI(); save(); render(); return toast("Chord keys: C3 to B4");
+    }
     S.key = +b.dataset.k; S.scale = b.dataset.sc; syncUI(); save(); render(); toast("Key: " + KEYS[S.key] + " " + SCALES[S.scale].name);
   });
 }
