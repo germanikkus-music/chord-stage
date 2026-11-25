@@ -118,6 +118,8 @@
   .knobs span { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; }
   .knobs b { color: var(--text); font-weight: 600; }
   .btns { margin-top: 8px; align-items: center; }
+  .warnhint { color: var(--pre); font-size: 13px; }
+  .usekey { margin: 4px 0; padding: 6px 10px; font-size: 13px; border-color: var(--pre); color: var(--pre); }
   #midiHelp { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--pre); border-radius: 12px; background: #2a2410; color: var(--text); font-size: 14px; line-height: 1.45; }
   #midiHelp b { color: var(--pre); }
   body.compact > #midiHelp { order: 1; }
@@ -1923,6 +1925,32 @@ function renderFormBar(steps, cur) {
   }).join("<span class=\"farrow\">→</span>");
 }
 // Would pressing this chord's root in the chord zone play it? (Chord lock, Sloppy mode, or a plain chord of the key)
+const chordZone = n => !isBass(n) && ["chords", "lock"].includes(n < S.split ? S.lowerMode : S.upperMode);
+// Only one key is "the" key for the next chord: the left-hand one nearest where the hand last played a chord
+// (or the middle of the chord keys), so the hand stays put instead of guessing between octaves. null: not on the chord keys
+function nextKeyFor(rootPc) {
+  const keys = [...document.querySelectorAll("#kb [data-n]")].map(el => +el.dataset.n);
+  const zoneKeys = keys.filter(chordZone), cands = zoneKeys.filter(n => mod(n, 12) === rootPc);
+  const left = cands.filter(n => n < S.split), pool = left.length ? left : cands;
+  const side = zoneKeys.filter(n => pool.length && (n < S.split) === (pool[0] < S.split));
+  const home = lastChordKey != null && chordZone(lastChordKey) ? lastChordKey : (side[0] + side[side.length - 1]) / 2;
+  return pool.reduce((b, n) => b == null || Math.abs(n - home) < Math.abs(b - home) ? n : b, null);
+}
+// A chart written in chord names whose chords mostly sit outside the chosen key: which key do they fit?
+let mismMemo = { id: "", v: null };
+function keyMismatch(steps) {
+  const id = S.prog + "|" + S.key + "|" + S.scale; if (mismMemo.id === id) return mismMemo.v;
+  let v = null;
+  if (steps.length >= 3 && /(^|[\s|\]])[A-G]/.test(S.prog || "")) {
+    const pcs = steps.flatMap(st => st.chord.tones.map(t => mod(st.chord.rootPc + t, 12)));
+    const fit = (k, sc) => pcs.filter(pc => SCALES[sc].notes.includes(mod(pc - k, 12))).length / pcs.length;
+    const here = fit(S.key, S.scale);
+    let best = { f: here, k: S.key, sc: S.scale };
+    for (let k = 0; k < 12; k++) for (const sc of ["major", "minor"]) { const f = fit(k, sc); if (f > best.f + 0.001) best = { f, k, sc }; }
+    if (here < 0.6 && best.f - here >= 0.25) v = { k: best.k, sc: best.sc };
+  }
+  mismMemo = { id, v }; return v;
+}
 function playsFromKeys(chord) {
   const modes = [S.lowerMode, S.upperMode];
   if (modes.includes("lock") || (modes.includes("chords") && S.sloppy)) return true;
@@ -1979,23 +2007,26 @@ function render() {
   else if (notes.length === 1) { $("nowName").textContent = noteName(notes[0]); $("nowNum").textContent = ""; }
   else { $("nowName").textContent = lastChordName || "–"; $("nowNum").textContent = ""; }
   $("nowName").style.opacity = notes.length ? 1 : 0.35;
-  $("nowHint").innerHTML = (melodyOver ? `<span class="press" style="color:var(--accent)">🎵 Melody over is on: keys play single notes</span><br>` : "") + `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
-    (want ? `Up next: <b>${want.chord.name}</b>${S.inst === "horn" ? (S.windChords === "fingers" ? `<span class="press">Finger ${SHARP[fingerFor(want.chord)]}</span>` : S.windChords === "off" ? "" : `<span class="press">Blow ${rootLabel(want.chord)}</span>`) : `<span class="press">Press ${want.chord.name.match(/^[A-G][#b]?/) ? want.chord.name.match(/^[A-G][#b]?/)[0] : pcName(want.chord.rootPc)}</span>${playsFromKeys(want.chord) ? "" : " (turn on Sloppy mode or Chord lock)"}`}<br>${after ? "then " + after.chord.name : ""}`
+  // Where the next chord's root actually is on the chord keys (with its octave), or why it can't be played
+  const reach = want && S.inst !== "horn" && playsFromKeys(want.chord) ? nextKeyFor(want.chord.rootPc) : null;
+  const pressTxt = want ? (want.chord.name.match(/^[A-G][#b]?/) || [pcName(want.chord.rootPc)])[0] + (reach != null ? Math.floor(reach / 12) - 1 : "") : "";
+  const noReach = want && S.inst !== "horn" && playsFromKeys(want.chord) && reach == null
+    ? `<br><span class="warnhint">${pressTxt} isn't on your chord keys. Widen them in ⚙ Settings › Keys setup.</span>` : "";
+  const mism = keyMismatch(steps);
+  $("nowHint").innerHTML = (mism ? `<span class="warnhint">These chords are in ${KEYS[mism.k]} ${SCALES[mism.sc].name}, the Key says ${KEYS[S.key]}.</span>` +
+      `<button class="usekey" data-k="${mism.k}" data-sc="${mism.sc}">Use ${KEYS[mism.k]} (keep chords)</button><br>` : "") +
+    (melodyOver ? `<span class="press" style="color:var(--accent)">🎵 Melody over is on: keys play single notes</span><br>` : "") + `<b>${KEYS[S.key]} ${SCALES[S.scale].name}</b>` +
+    (want ? `Up next: <b>${want.chord.name}</b>${S.inst === "horn" ? (S.windChords === "fingers" ? `<span class="press">Finger ${SHARP[fingerFor(want.chord)]}</span>` : S.windChords === "off" ? "" : `<span class="press">Blow ${rootLabel(want.chord)}</span>`) : `<span class="press">Press ${pressTxt}</span>${playsFromKeys(want.chord) ? noReach : " (turn on Sloppy mode or Chord lock)"}`}<br>${after ? "then " + after.chord.name : ""}`
       : next.length ? "Try next: " + next.map(d => chords[d].name).join(" · ") : "Play a chord to see what fits next") +
     (windNote != null ? `<br>Aerophone: <b>${noteName(windNote)}</b>` : "") +
     (bassNotes().length ? `<br>${S.bassSound === "piano" ? "Left hand" : "Bass"}: ${bassNotes().map(noteName).join(" ")}` : "");
 
   // Keyboard highlights; the green box marks the keys for the next chord
   const target = want && playsFromKeys(want.chord) ? want.chord.rootPc : -1;
-  const zone = n => !isBass(n) && ["chords", "lock"].includes(n < S.split ? S.lowerMode : S.upperMode);
-  // Only one key is "the" key: the left-hand one nearest where the hand last played a chord
-  // (or the middle of the chord keys), so the hand stays put instead of guessing between octaves
+  const zone = chordZone;
   const keys = [...document.querySelectorAll("#kb [data-n]")].map(el => +el.dataset.n);
-  const zoneKeys = keys.filter(zone), cands = zoneKeys.filter(n => mod(n, 12) === target);
-  const left = cands.filter(n => n < S.split), pool = left.length ? left : cands;
-  const side = zoneKeys.filter(n => pool.length && (n < S.split) === (pool[0] < S.split));
-  const home = lastChordKey != null && zone(lastChordKey) ? lastChordKey : (side[0] + side[side.length - 1]) / 2;
-  const best = pool.reduce((b, n) => b == null || Math.abs(n - home) < Math.abs(b - home) ? n : b, null);
+  const cands = keys.filter(zone).filter(n => mod(n, 12) === target);
+  const best = target < 0 ? null : nextKeyFor(target);
   document.querySelectorAll("#kb [data-n]").forEach(el => {
     const n = +el.dataset.n;
     el.classList.toggle("out", !inScale(n));
@@ -2423,6 +2454,11 @@ function initSettings() {
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", e => { e.preventDefault(); e.stopPropagation(); drop.classList.remove("over"); setSkin(e.dataTransfer.files[0]); });
   applyLook();
+  // "Use Db (keep chords)" under Up next: change the key to fit the chart without moving its chords
+  $("nowHint").addEventListener("click", e => {
+    const b = e.target.closest(".usekey"); if (!b) return;
+    S.key = +b.dataset.k; S.scale = b.dataset.sc; syncUI(); save(); render(); toast("Key: " + KEYS[S.key] + " " + SCALES[S.scale].name);
+  });
 }
 async function importProgressions(files) {
   const added = [], failed = []; let updated = 0;
