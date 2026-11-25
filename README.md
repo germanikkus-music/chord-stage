@@ -97,6 +97,13 @@ On a phone, Chord Stage switches to **Stage view** by itself: the song, the big 
 
 The bar shows each part, with the one you're in highlighted (and which pass, like 2/3), and the chord chips show that part's chords. Moved parts keep MPC voicings, shifted. Sloppy mode, pad 8 and Chord lock all follow the moved chords. Saved with each song.
 
+## Chords move with the beat
+
+**Chords move** (right of Song form) picks what moves the progression on:
+
+- **When I play them** (the usual): play the next chord and the strip moves on.
+- **Every bar (with the beat)**, **Every 2 bars** or **Every half bar**: once the beat is running, the progression moves by itself on the bar line, so you can strike each chord as often and in whatever rhythm you like (C C, C C, C C, C C in a 12-bar blues). Up next shows **This bar** and the key for it; the green key always plays the chord for the bar you're in. The change comes a moment before the downbeat, so a strike landing just early still gets the new chord. With **Start on first chord**, the drums and the progression start together on your first chord. Stop the beat and it's back to moving when you play. Saved with each song.
+
 ## Smooth voicing
 
 **Smooth voicing** (Piano, on by default) plays each chord in the inversion closest to the chord before it, so changes glide from one to the next instead of jumping up and down the keyboard, the way neo soul and gospel players voice-lead. The chord sits from E3 up and the bass note (or the slash-chord bass) sits in C2–B2 underneath. In a ii–V–I–vi–IV–V–I the notes move about a quarter as far as before. Untick it for plain root-position chords. Chords imported from MPC keep their exact voicings.
