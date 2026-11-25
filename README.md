@@ -50,6 +50,10 @@ Press **PAD BANK A/B** to switch the pads to bank B; bank A plays chords as befo
 
 The **MPK buttons & bank-B pads** row under the knob boxes shows the mapping. Tap an action, then press any button that sends a MIDI CC (on the MPK or another keyboard) or a bank-B pad to put it there; tap an action twice to clear it. The encoder push and Shift are free; the encoder push can be assigned. The mapping is saved in the browser, not per song. OCT −/+, ARP, LATCH, CHORDS, SCALES, NOTE REPEAT and PLUGIN/DAW only change the MPK itself and send nothing.
 
+## PopuPiano bass bars
+
+The PopuPiano's six bars on the left play **bass notes in the song's key**: bar 1 is the key's root, bar 2 the 2nd note of the scale, and so on up to bar 6, climbing like a scale (in C major: C D E F G A; in A minor: A B C D E F). They use the **Bass keys** sound and style settings (Left hand piano or Bass guitar; single, octaves or root + 5th), and they work whether or not a bass zone is set on the keyboard. The bars send C–A on MIDI channel 2; Chord Stage recognises them by the PopuPiano's name.
+
 ## Stage view
 
 On a phone, Chord Stage switches to **Stage view** by itself: the song, the big chord with Up next, the progression and song form, the chord tiles, Beat, Rec / Loop and STOP ALL, in that order, with the settings hidden. On a tablet or computer, press **▣ Stage view** next to the Piano/Horn button. **⚙ All controls** brings everything back.

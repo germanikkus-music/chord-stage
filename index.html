@@ -1004,6 +1004,32 @@ function bassUp(note) {
   });
   render();
 }
+// PopuPiano's six left-hand bars send C D E F G A (in octaves) on channel 2. Here each bar is a bass note
+// in the song's key: bar 1 = the key's root, bar 2 = the 2nd note of the scale, ... bar 6 = the 6th.
+const BAR_OF_PC = { 0: 0, 2: 1, 4: 2, 5: 3, 7: 4, 9: 5 };
+const barsDown = new Set();
+function barMidi(on, note) {
+  const d = BAR_OF_PC[mod(note, 12)]; if (d == null) return;
+  if (on) { if (barsDown.has(d)) return; barsDown.add(d); barDown(d); }  // the bar's other octaves are the same press
+  else if (barsDown.delete(d)) barUp(d);
+}
+function barDown(d) {
+  barUp(d);
+  // The bars climb like a scale from the key's root, which sits between G#1 and G2
+  const root = 36 + S.key - (S.key >= 8 ? 12 : 0), n = root + SCALES[S.scale].chord[d], vel = 100;
+  const notes = S.bassStyle === "octave" ? [n, n + 12] : S.bassStyle === "fifth" ? [n, snapNearest(n + 7)] : [n];
+  if (S.bassSound === "piano") { press("bar" + d, notes, vel, null); checkFree(); return; }
+  bassHeld.set("bar" + d, notes);
+  notes.forEach(m => {
+    if (ctx && S.internal) { const old = bassVoices.get(m); if (old) old.stop(0.02); bassVoices.set(m, makeVoice(m, vel, "bass")); }
+    if (midiOut) midiOut.send([0x91, m, vel]);
+  });
+  render();
+}
+function barUp(d) {
+  if (held.has("bar" + d)) return release("bar" + d);
+  bassUp("bar" + d);
+}
 const bassNotes = () => [...new Set([...bassHeld.values()].flat()
   .concat(...[...held].filter(([id]) => id[0] === "b").map(([, h]) => h.notes)))].sort((a, b) => a - b);
 
@@ -1411,6 +1437,7 @@ function onMidi(e) {
     windPorts.add(e.target.id);
     return type === 0x90 && d2 > 0 ? windDown(d1, d2) : windUp(d1);
   }
+  if (ch === 2 && /popu/i.test(e.target.name || "") && (type === 0x90 || type === 0x80)) return barMidi(type === 0x90 && d2 > 0, d1);
   if (learnSplit && type === 0x90 && d2 > 0) { S.split = d1; learnSplit = false; save(); syncUI(); render(); return; }
   if (learnBass && type === 0x90 && d2 > 0 && ch !== 10) { S.bassSplit = d1 + 1; learnBass = false; save(); syncUI(); render(); return; }
   // Pad bank B (notes 44-51 on channel 10) can be action pads
