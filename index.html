@@ -118,6 +118,9 @@
   .knobs span { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; }
   .knobs b { color: var(--text); font-weight: 600; }
   .btns { margin-top: 8px; align-items: center; }
+  #midiHelp { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--pre); border-radius: 12px; background: #2a2410; color: var(--text); font-size: 14px; line-height: 1.45; }
+  #midiHelp b { color: var(--pre); }
+  body.compact > #midiHelp { order: 1; }
   .btns button { font: inherit; font-size: 12px; color: var(--dim); background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 5px 9px; cursor: pointer; }
   .btns button.set { border-style: solid; }
   #toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 50; background: #12392c; color: var(--tonic);
@@ -283,6 +286,8 @@
   <button id="instBtn" title="Switch between piano and horn">🎹 Piano ▾</button>
   <button id="stageBtn" title="Stage view: just the chords, big, for a phone or tablet on the stand">▣ Stage view</button>
 </div>
+
+<div id="midiHelp" hidden></div>
 
 <header>
   <div class="ctl"><label>Key</label><select id="key"></select></div>
@@ -1432,9 +1437,18 @@ let access;
 function refreshStatus() {
   const st = document.getElementById("status"); if (!access) return;
   const ins = [...access.inputs.values()];
-  const names = [ins.some(i => /mpk/i.test(i.name)) && "MPK", ins.some(isWindPort) && "Aerophone"].filter(Boolean);
+  const names = [ins.some(i => /mpk/i.test(i.name)) && "MPK", ins.some(i => /popu/i.test(i.name)) && "PopuPiano", ins.some(isWindPort) && "Aerophone"].filter(Boolean);
   st.textContent = names.length ? names.join(" + ") + " connected" : ins.length ? ins.length + " MIDI input(s)" : "No MIDI keyboard found";
   st.className = ins.length ? "ok" : "";
+  midiHelp(!ins.length);
+}
+// No keyboard: show how to connect a Bluetooth one, the step that's easy to forget
+function midiHelp(show) {
+  const el = $("midiHelp"); if (!el) return;
+  el.hidden = !show; if (!show) return;
+  el.innerHTML = /Android/i.test(navigator.userAgent)
+    ? `<b>No keyboard found.</b> USB: plug it in with a data cable (OTG). Bluetooth (PopuPiano): open <b>MIDI BLE Connect</b>, connect the keyboard there, then come back. Disconnect it from the MPC first: it can only connect to one device at a time.`
+    : `<b>No keyboard found.</b> USB: plug it in (a charge-only cable won't work). Bluetooth (PopuPiano): open <b>Audio MIDI Setup</b> → <b>Window → Show MIDI Studio</b> → the <b>Bluetooth</b> button → <b>Connect</b>. Disconnect it from the MPC first: it can only connect to one device at a time.`;
 }
 async function initMidi() {
   const st = document.getElementById("status");

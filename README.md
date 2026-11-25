@@ -120,6 +120,9 @@ A `.progression` file may carry an optional `chordStage` block (`bpm`, `beatStyl
 
 ## Install (Android, Mac)
 
+**Bluetooth keyboards (PopuPiano):** when no keyboard is found, Chord Stage shows a yellow reminder with the steps. On a Mac, Bluetooth MIDI keyboards only appear after **Audio MIDI Setup → Window → Show MIDI Studio → Bluetooth → Connect**. On Android, connect them in **MIDI BLE Connect**. Either way, disconnect the keyboard from the MPC first: Bluetooth MIDI connects to one device at a time.
+
+
 Chord Stage is live at **https://germanikkus-music.github.io/chord-stage/** (GitHub Pages, from `main`). Open it in Chrome and choose **⋮ → Install app** (Android) or the install icon in the address bar (Mac). It opens full screen with its own icon and works offline; each push to `main` shows up the next time it opens with internet. Songs live in each browser separately, so move them with **Export** / **Import**. On Android, connect keyboards and the Aerophone by USB (OTG), and use wired audio: a Bluetooth speaker adds about 0.2 s of delay.
 
 ## Run
