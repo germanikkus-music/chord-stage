@@ -1399,7 +1399,9 @@ function arpStop(id) {
 const repKeys = new Map(), keyUpAt = new Map(), keyDownAt = new Map();
 function repeatTick(note, vel) {
   const r = repKeys.get(note), up = keyUpAt.get(note), down = keyDownAt.get(note), now = performance.now();
-  if (!r || up == null || down == null || now - up > 100 || up - down > 200) return false;
+  // The MPK's ARP re-presses about every 125 ms (a 62 ms note, a 62 ms gap). A quick re-strike by hand is slower than
+  // that, and must still count as a new chord (a blues plays the same chord four times in a row)
+  if (!r || up == null || down == null || now - up > 80 || up - down > 100) return false;
   keyDownAt.set(note, now);
   const upper = r.notes.length > 2 && r.notes[1] - r.notes[0] >= 7 ? r.notes.slice(1) : r.notes; // leave the low root out
   const seq = S.arp === "off" ? upper : arpPattern(upper);
@@ -1532,7 +1534,22 @@ function renderButtons() {
   });
 }
 function cycle(prop, list, d) { S[prop] = list[mod(list.indexOf(S[prop]) + d, list.length)]; syncUI(); save(); render(); }
-function setKey(k) { S.key = k; syncUI(); save(); render(); }
+function setKey(k) { transposeTo(k); syncUI(); save(); render(); }
+// Changing the key moves chords written by name (Bb Eb F7, MPC charts) along with it, voicings too,
+// the shorter way round; Roman numerals follow the key by themselves
+function transposeTo(k) {
+  k = mod(k, 12); const d0 = mod(k - S.key, 12), d = d0 > 6 ? d0 - 12 : d0;
+  if (d && S.prog && /(^|[\s|\]])[A-G]/.test(S.prog)) {
+    const names = FLAT_MAJORS.has(mod(k + SCALES[S.scale].parent, 12)) ? FLAT : SHARP;
+    // In the key: the key's own spelling. Outside it (bII, bIII, bV, bVI, bVII): flats, as players write them
+    const mv = r => { const pc = mod(pcOf(r) + d, 12); return SCALES[S.scale].notes.includes(mod(pc - k, 12)) ? names[pc] : FLAT[pc]; };
+    S.prog = S.prog.replace(/(^|[\s|\]])([A-G][#b]?)([^\s@|\/\[]*)(\/([A-G][#b]?))?(@[\d.]+)?(?=$|[\s|])/g,
+      (m, pre, root, q, sl, bass, v) => pre + mv(root) + q + (bass ? "/" + mv(bass) : "") +
+        (v ? "@" + v.slice(1).split(".").map(n => Math.max(0, Math.min(127, +n + d))).join(".") : ""));
+    $("prog").value = S.prog;
+  }
+  S.key = k;
+}
 
 // ---------- MIDI input ----------
 const recent = new Map();
@@ -1659,7 +1676,12 @@ function setup() {
   $("showRec").onclick = () => { S.recView = true; save(); render(); };
   $("showKb").onclick = () => { S.recView = false; save(); render(); };
   bind("windOct", t => S.windOct = +t.value);
-  bind("key", t => S.key = +t.value);
+  bind("key", t => {
+    // Chords written by name: ask, since fixing a wrongly guessed key must not move them
+    const named = S.prog && /(^|[\s|\]])[A-G]/.test(S.prog) && +t.value !== S.key;
+    if (named && !confirm(`Move the chords to ${KEYS[+t.value]} too?\n\nOK: transpose the whole song.\nCancel: keep the chords where they are and only change the key.`)) S.key = +t.value;
+    else transposeTo(+t.value);
+  });
   bind("scale", t => S.scale = t.value);
   bind("sound", t => S.sound = t.value);
   bind("lowerMode", t => S.lowerMode = t.value);

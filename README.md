@@ -70,6 +70,10 @@ Esc closes Settings (and still stops every note).
 
 **+ Add folder** adds every `.progression` and `.mpcpattern` file in a folder and its subfolders (up to three levels down). Songs already in the set list are refreshed, not duplicated. In Chrome on a computer the folder is remembered: **↻ Update from <folder>** adds anything new you've saved there (Chrome asks once per session to allow reading the folder). Chrome on Android can't remember folders; there, **+ MPC files** lets you select all the files in a folder at once.
 
+## Changing the key of a song
+
+Progressions written in Roman numerals follow the key by themselves. Progressions written with chord names (most MPC charts: `Bb Eb F7`) move with the key too: pick a new **Key** and Chord Stage asks whether to transpose the song. **OK** moves every chord and its voicing (the shorter way round), spelling chords outside the key with flats (Bb, Ab, Db in C major). **Cancel** keeps the chords and only changes the key, which is what you want when the key was guessed wrong. Knob K6 always transposes.
+
 ## MPC patterns (.mpcpattern)
 
 A `.mpcpattern` holds the notes as played, not chord names, so Chord Stage works the chords out: it looks at each half bar, finds the chord that best fits the notes sounding (triads, 7ths, 9ths, sus, add9, slash chords with the lowest note as the bass), keeps the pattern's own voicing, merges repeats, and guesses the key from all the notes. The result is a normal song with **Sloppy mode** on. Patterns without chords (drums, chopped samples, single-note melodies) are skipped with a note. Drop `.mpcpattern` files on the page, use **+ MPC files**, or put them in a folder with **+ Add folder**.
