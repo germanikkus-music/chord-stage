@@ -210,6 +210,67 @@
   #start .pick small { color: var(--dim); font-size: 13px; }
   #instBtn { margin-left: 10px; font-size: 13px; padding: 4px 10px; }
   body.inst-horn .piano-only, body.inst-piano .horn-only { display: none !important; }
+
+  /* ⚙ Settings: a panel that slides over the page, for what you set once rather than while playing */
+  #settings[hidden] { display: none; }
+  #settings { position: fixed; inset: 0; z-index: 40; }
+  .setshade { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+  .setpanel { position: absolute; top: 0; right: 0; bottom: 0; width: min(860px, 100%); display: flex; background: var(--bg);
+    border-left: 1px solid var(--line); box-shadow: -20px 0 60px rgba(0,0,0,.45); color: var(--text); }
+  .settabs { width: 190px; flex: none; display: flex; flex-direction: column; gap: 4px; padding: 18px 12px; border-right: 1px solid var(--line); }
+  .settabs b { font-size: 18px; margin: 0 8px 12px; }
+  .settabs button { text-align: left; border: 0; background: none; padding: 11px 12px; border-radius: 10px; color: var(--dim); font-size: 15px; }
+  .settabs button.on { background: var(--panel2); color: var(--accent); font-weight: 700; }
+  .setbody { flex: 1; min-width: 0; overflow-y: auto; padding: 18px 24px 40px; }
+  .sethead { display: flex; align-items: center; margin-bottom: 14px; }
+  .sethead h2 { margin: 0; font-size: 22px; }
+  .sethead button { margin-left: auto; width: 44px; height: 44px; font-size: 18px; }
+  .setbody section { display: none; flex-direction: column; gap: 14px; }
+  .setbody section.on { display: flex; }
+  .setbody section > .ctl, .setbody section > .knobs { align-self: flex-start; }
+  .setbody h3 { margin: 8px 0 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+  .setbody .note { font-size: 13px; color: var(--dim); margin: 0; }
+  .setbody #listPanel { margin-top: 0; }
+  .themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .themes button { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px; border: 2px solid var(--line); background: var(--panel); text-align: left; }
+  .themes button.on { border-color: var(--accent); }
+  .themes .sw { height: 78px; border-radius: 10px; display: flex; align-items: flex-end; justify-content: space-between; padding: 10px; border: 1px solid rgba(128,128,128,.35); }
+  .themes .sw b { font-size: 30px; line-height: 1; }
+  .themes .sw i { font-style: normal; font-weight: 700; font-size: 12px; padding: 3px 8px; border-radius: 6px; }
+  .themes small { color: var(--dim); }
+  .skinrow { display: flex; gap: 14px; flex-wrap: wrap; }
+  #skinThumb { width: 220px; height: 130px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2) center / cover no-repeat;
+    display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 13px; }
+  .skindrop { flex: 1; min-width: 220px; border: 2px dashed var(--line); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 12px; text-align: center; font-size: 13px; color: var(--dim); }
+  .skindrop.over { border-color: var(--accent); }
+  #skinPick { background: var(--accent); color: #06121a; border: 0; font-weight: 700; padding: 10px 18px; }
+  .skinctl { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 20px; }
+  .skinctl label { display: flex; flex-direction: column; gap: 6px; }
+  .skinctl input[type=range] { accent-color: var(--accent); }
+  @media (max-width: 640px) { .settabs { width: 120px; } .themes { grid-template-columns: 1fr; } }
+
+  /* Themes */
+  body.theme-studio { --bg: #17110c; --panel: #221a13; --panel2: #2d2219; --line: #3a2c20; --text: #f3e6cf; --dim: #b9a78a;
+    --accent: #f2a541; --tonic: #8fd1bf; --pre: #e0b341; --dom: #e07a5f; --rgb: 34,26,19; }
+  body.theme-studio .logo { color: #f2a541; text-shadow: none; font-family: Georgia, "Iowan Old Style", serif; letter-spacing: .08em; }
+  body.theme-studio .logo b { color: #f3e6cf; text-shadow: none; }
+  body.theme-studio #nowName, body.theme-studio .tile .name, body.theme-studio #songName, body.theme-studio .themes .serif { font-family: Georgia, "Iowan Old Style", serif; font-weight: 700; }
+  body.theme-day { --bg: #f4f5f7; --panel: #ffffff; --panel2: #eceef2; --line: #c3c7cf; --text: #0e1116; --dim: #4a5160;
+    --accent: #1f4fd8; --tonic: #0f7b46; --pre: #a15c00; --dom: #b91c1c; --hot: #0e1116; --rgb: 255,255,255; }
+  body.theme-day .logo { color: #0e1116; text-shadow: none; font-weight: 800; letter-spacing: .1em; }
+  body.theme-day .logo b { color: #1f4fd8; text-shadow: none; }
+  body.theme-day button:hover, body.theme-day select:hover { border-color: #7d8494; }
+  body { --rgb: 22,26,34; }
+
+  /* Skin: your own picture behind everything, panels turn to frosted glass on top of it */
+  #skinBg { display: none; position: fixed; inset: 0; z-index: -1; background-position: center; background-size: cover; }
+  #skinBg::after { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,var(--skin-dim, .35)); }
+  body.skin #skinBg { display: block; }
+  body.skin { background: transparent; --panel: rgba(var(--rgb), var(--skin-glass, .6)); }
+  body.skin .setbar, body.skin .beatbar, body.skin .progbox, body.skin .kbwrap, body.skin .tile, body.skin #listPanel,
+  body.skin header .ctl, body.skin .knobs span, body.skin .now { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  body.skin .now { background: var(--panel); border-radius: 16px; padding: 10px 18px; }
+  body.skin .setpanel { background: var(--bg); }
   #start h1 { margin: 0; font-size: 44px; }
   #start p { margin: 0; color: var(--dim); }
   #start.hide { display: none; }
@@ -285,6 +346,7 @@
   <a class="guide-link" href="docs/guide.html" target="_blank" rel="noopener">Guide</a>
   <button id="instBtn" title="Switch between piano and horn">🎹 Piano ▾</button>
   <button id="stageBtn" title="Stage view: just the chords, big, for a phone or tablet on the stand">▣ Stage view</button>
+  <button id="setBtn" title="Settings: look and skin, set list, setup, sound out, controllers">⚙ Settings</button>
 </div>
 
 <div id="midiHelp" hidden></div>
@@ -415,6 +477,52 @@
 <div class="knobs" id="knobs"></div>
 <div class="knobs btns" id="btns"></div>
 
+<div id="skinBg" aria-hidden="true"></div>
+<div id="settings" hidden>
+  <div class="setshade"></div>
+  <aside class="setpanel" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <nav class="settabs" aria-label="Settings sections">
+      <b>⚙ Settings</b>
+      <button data-tab="look">Look</button>
+      <button data-tab="setlist">Set list</button>
+      <button data-tab="setup">Keys setup</button>
+      <button data-tab="sound">Sound &amp; MIDI out</button>
+      <button data-tab="controllers">Controllers</button>
+    </nav>
+    <div class="setbody">
+      <div class="sethead"><h2 id="setTitle">Look</h2><button id="setClose" aria-label="Close settings">✕</button></div>
+      <section data-sec="look">
+        <h3>Theme</h3>
+        <div class="themes">
+          <button data-theme="neon"><span class="sw" style="background:#07090e"><b style="color:#fff">Am7</b><i style="background:#ffae3d;color:#1a1205">Dm7</i></span><b>Neon Stage</b><small>Dark and glowing</small></button>
+          <button data-theme="studio"><span class="sw" style="background:#17110c"><b class="serif" style="color:#f8ecd6;font-family:Georgia,serif">Am7</b><i style="background:#f2a541;color:#23160a">Dm7</i></span><b>Warm Studio</b><small>Walnut, cream and amber</small></button>
+          <button data-theme="day"><span class="sw" style="background:#f4f5f7"><b style="color:#0e1116">Am7</b><i style="background:#1f4fd8;color:#fff">Dm7</i></span><b>Daylight</b><small>Light, high contrast</small></button>
+        </div>
+        <h3>Skin image (JPG or PNG)</h3>
+        <div class="skinrow">
+          <div id="skinThumb">No skin</div>
+          <div class="skindrop" id="skinDrop">
+            <button id="skinPick">Choose image…</button>
+            <input type="file" id="skinFile" accept="image/png,image/jpeg,image/webp" hidden>
+            <span>or drop a JPG or PNG here · it stays on this device</span>
+            <button id="skinRemove">Remove skin</button>
+          </div>
+        </div>
+        <div class="skinctl">
+          <label>Darken image <input type="range" id="skinDim" min="0" max="0.85" step="0.05"></label>
+          <label>Panel glass <input type="range" id="skinGlass" min="0.2" max="0.95" step="0.05"></label>
+          <label>Fit <select id="skinFit"><option value="cover">Fill the screen</option><option value="contain">Fit whole image</option><option value="tile">Tile</option></select></label>
+        </div>
+        <p class="note">The big chord, Up next, the chord tiles and the keyboard keep their own colors over any image, so a busy picture can't hide what to play.</p>
+      </section>
+      <section data-sec="setlist"></section>
+      <section data-sec="setup"><p class="note">Where the keyboard splits and what the left hand does. These are saved with each song.</p></section>
+      <section data-sec="sound"><p class="note">Where the notes go, and the drum mix.</p></section>
+      <section data-sec="controllers"><p class="note">What the MPK's buttons, encoder and bank-B pads do. The PopuPiano's six left bars always play bass notes 1–6 of the key.</p></section>
+    </div>
+  </aside>
+</div>
+
 <script>
 "use strict";
 // ---------- Music theory ----------
@@ -461,7 +569,7 @@ const DETECT = QUALITY.concat([
 const mod = (n, m) => ((n % m) + m) % m;
 const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
-const DEFAULTS = { key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
+const DEFAULTS = { theme: "neon", skinDim: 0.35, skinGlass: 0.6, skinFit: "cover", key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
   windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
@@ -1591,7 +1699,7 @@ function setup() {
   $("tap").onclick = tapTempo;
   $("panic").onclick = panic;
   addEventListener("keydown", e => {
-    if (e.key === "Escape") return panic();
+    if (e.key === "Escape") { closeSettings(); return panic(); }
     if (/SELECT|INPUT/.test(e.target.tagName) && e.target.type !== "checkbox" && e.target.type !== "range") return;
     if (e.key === " ") { e.preventDefault(); return beatButton(); }
     if (e.key === "r" || e.key === "R") { e.preventDefault(); return loopRecButton(); }
@@ -1626,7 +1734,7 @@ function setup() {
   $("mpcFile").onchange = e => { importProgressions([...e.target.files]); e.target.value = ""; };
   addEventListener("dragover", e => e.preventDefault());
   addEventListener("drop", e => { e.preventDefault();
-    const files = [...e.dataTransfer.files].filter(f => /\.progression$/i.test(f.name));
+    const files = [...e.dataTransfer.files].filter(f => /\.(progression|mpcpattern)$/i.test(f.name));
     if (files.length) importProgressions(files); });
   $("songList").onclick = e => {
     const b = e.target.closest("button"), row = e.target.closest(".row"); if (!b || !row) return;
@@ -2148,11 +2256,158 @@ function progressionSong(json, fileName) {
   if (extra.sound && !SOUNDS[extra.sound]) delete extra.sound;
   return { name, ...songOf(), key, scale, sevenths, prog, sloppy: true, ...extra }; // most MPC chords are outside the key
 }
+// An MPC .mpcpattern is the notes as played (960 ticks per beat). Find the chord in each half bar, name it,
+// keep its voicing, guess the key, and hand it to the .progression importer.
+function patternSong(json, fileName) {
+  const ev = (json.pattern.events || []).filter(e => e.type === 2 && Number.isFinite(e.time) && Number.isInteger(e["1"]));
+  if (!ev.length) throw 0;
+  const SEG = 1920, end = Math.max(...ev.map(e => e.time + (e.len || 0)));
+  const templates = DETECT.filter(q => q.iv.length >= 2 && !(q.iv.length === 1)).map(q => ({ q, tones: [0, ...q.iv.map(x => mod(x, 12))] }));
+  const chords = [], total = new Array(12).fill(0);
+  let last = "";
+  for (let i = 0, n = Math.min(128, Math.ceil(end / SEG)); i < n; i++) {
+    const a = i * SEG, b = a + SEG, w = new Array(12).fill(0), notes = [];
+    for (const e of ev) {
+      const ov = Math.min(b, e.time + Math.max(e.len || 0, 1)) - Math.max(a, e.time); if (ov <= 0) continue;
+      const wt = ov / SEG * (e["2"] ?? 1); w[mod(e["1"], 12)] += wt; total[mod(e["1"], 12)] += wt; notes.push({ n: e["1"], wt });
+    }
+    const pcs = w.map((x, pc) => x > 0.06 ? pc : -1).filter(pc => pc >= 0);
+    if (pcs.length < 3) continue; // a passing note or two: the last chord carries on
+    const sum = w.reduce((x, y) => x + y, 0), low = mod(Math.min(...notes.filter(x => x.wt > 0.06).map(x => x.n)), 12);
+    let best = null;
+    for (let r = 0; r < 12; r++) for (const { q, tones } of templates) {
+      const ch = new Set(tones.map(t => mod(r + t, 12)));
+      let sc = 0; for (let pc = 0; pc < 12; pc++) sc += ch.has(pc) ? w[pc] : -0.7 * w[pc];
+      sc -= [...ch].filter(pc => w[pc] < 0.02).length * 0.25 * sum / pcs.length; // missing chord tones
+      sc += (r === low ? 0.08 : 0) * sum - 0.01 * ch.size * sum;
+      if (!best || sc > best.sc) best = { sc, ch, r, q };
+    }
+    const voicing = [...new Set(notes.filter(x => x.wt > 0.06 && best.ch.has(mod(x.n, 12))).map(x => x.n))].sort((x, y) => x - y);
+    if (voicing.length < 3) continue;
+    const bass = mod(voicing[0], 12);
+    const id = SHARP[best.r] + best.q.sym + (bass !== best.r ? "/" + SHARP[bass] : "");
+    if (id === last) continue;
+    last = id; chords.push({ name: id, notes: voicing });
+  }
+  if (!chords.length) throw 0;
+  // Key: the major or minor key whose profile best matches all the notes (Krumhansl-Schmuckler)
+  const MAJ = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88], MIN = [6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+  const corr = (prof, k) => { const xs = total.map((_, i) => total[mod(i + k, 12)]), mx = xs.reduce((a, b) => a + b) / 12, my = prof.reduce((a, b) => a + b) / 12;
+    let n = 0, dx = 0, dy = 0; xs.forEach((x, i) => { n += (x - mx) * (prof[i] - my); dx += (x - mx) ** 2; dy += (prof[i] - my) ** 2; }); return n / Math.sqrt(dx * dy || 1); };
+  let key = { r: -2 };
+  for (let k = 0; k < 12; k++) for (const [prof, sc] of [[MAJ, "Major"], [MIN, "Minor"]]) { const r = corr(prof, k); if (r > key.r) key = { r, k, sc }; }
+  const name = fileName.replace(/\.mpcpattern$/i, "").replace(/_/g, " ");
+  return progressionSong({ progression: { name, rootNote: SHARP[key.k], scale: key.sc, chords } }, fileName);
+}
+
+// ---------- ⚙ Settings, themes and skin ----------
+let skinData = null;
+try { skinData = localStorage.getItem("chordstage-skin"); } catch {}
+function openSettings(tab) {
+  $("settings").hidden = false;
+  document.querySelectorAll("#settings [data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  document.querySelectorAll("#settings [data-sec]").forEach(x => x.classList.toggle("on", x.dataset.sec === tab));
+  $("setTitle").textContent = document.querySelector(`#settings [data-tab="${tab}"]`).textContent;
+}
+function closeSettings() { $("settings").hidden = true; }
+function applyLook() {
+  const b = document.body;
+  b.classList.toggle("theme-studio", S.theme === "studio"); b.classList.toggle("theme-day", S.theme === "day");
+  document.querySelectorAll(".themes [data-theme]").forEach(x => x.classList.toggle("on", x.dataset.theme === (S.theme || "neon")));
+  b.classList.toggle("skin", !!skinData);
+  document.documentElement.style.background = skinData ? "#000" : "";
+  const bg = $("skinBg"), fit = S.skinFit || "cover";
+  bg.style.backgroundImage = skinData ? `url(${skinData})` : "";
+  bg.style.backgroundSize = fit === "tile" ? "auto" : fit; bg.style.backgroundRepeat = fit === "tile" ? "repeat" : "no-repeat";
+  b.style.setProperty("--skin-dim", S.skinDim ?? 0.35); b.style.setProperty("--skin-glass", S.skinGlass ?? 0.6);
+  $("skinDim").value = S.skinDim ?? 0.35; $("skinGlass").value = S.skinGlass ?? 0.6; $("skinFit").value = fit;
+  const th = $("skinThumb"); th.style.backgroundImage = skinData ? `url(${skinData})` : ""; th.textContent = skinData ? "" : "No skin";
+  $("skinRemove").hidden = !skinData;
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = getComputedStyle(b).getPropertyValue("--bg").trim() || "#0d0f14";
+}
+async function setSkin(file) {
+  if (!file || !/^image\//.test(file.type)) return alert("Pick a JPG or PNG image.");
+  const url = URL.createObjectURL(file), img = new Image(); img.src = url;
+  try { await img.decode(); } catch { URL.revokeObjectURL(url); return alert("Couldn't open that image."); }
+  // Shrink big photos so they fit in the browser's storage and stay quick
+  const k = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+  skinData = c.toDataURL("image/jpeg", 0.85);
+  try { localStorage.setItem("chordstage-skin", skinData); } catch { alert("That image is too big to keep. It shows now, but won't be there after a reload. Try a smaller one."); }
+  applyLook();
+}
+// A remembered folder of progressions (Chrome on a computer can keep a folder; Android can't)
+const handleDb = () => new Promise((ok, no) => { const r = indexedDB.open("chordstage", 1); r.onupgradeneeded = () => r.result.createObjectStore("handles"); r.onsuccess = () => ok(r.result); r.onerror = no; });
+async function handleGet() { try { const db = await handleDb(); return await new Promise(ok => { const q = db.transaction("handles").objectStore("handles").get("folder"); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); } catch { return null; } }
+async function handleSet(h) { try { const db = await handleDb(); db.transaction("handles", "readwrite").objectStore("handles").put(h, "folder"); } catch {} }
+const chartFile = n => /\.(progression|mpcpattern)$/i.test(n);
+async function filesIn(dir, depth = 0, out = []) {
+  for await (const h of dir.values()) {
+    if (h.kind === "file" && chartFile(h.name)) out.push(await h.getFile());
+    else if (h.kind === "directory" && depth < 3) await filesIn(h, depth + 1, out);
+  }
+  return out;
+}
+async function importFolderFiles(files) {
+  files = files.filter(f => chartFile(f.name));
+  if (!files.length) return alert("No .progression or .mpcpattern files in that folder.");
+  importProgressions(files);
+}
+async function showSyncFolder() {
+  const h = await handleGet(), b = $("syncFolder"); if (!b) return;
+  b.hidden = !h; if (h) b.textContent = "↻ Update from " + h.name;
+}
+function initSettings() {
+  const sec = n => document.querySelector(`#settings [data-sec="${n}"]`), ctlOf = id => $(id).closest(".ctl");
+  sec("setup").append(ctlOf("bassSplit"), ctlOf("split"), ctlOf("sevenths"), ctlOf("bass"));
+  sec("sound").append(ctlOf("out"), ctlOf("internal"), ctlOf("beatLevel"), ctlOf("beatFills"), ctlOf("beatMidi"));
+  sec("controllers").append($("btns"));
+  const lp = $("listPanel"); lp.hidden = false; sec("setlist").append(lp);
+  // Folder import next to "+ MPC progressions"
+  const add = document.createElement("button"); add.id = "addFolder"; add.textContent = "+ Add folder";
+  add.title = "Add every .progression and .mpcpattern file in a folder (and its subfolders)";
+  const sync = document.createElement("button"); sync.id = "syncFolder"; sync.hidden = true;
+  sync.title = "Add anything new from the folder you added last";
+  const dirIn = document.createElement("input"); dirIn.type = "file"; dirIn.hidden = true; dirIn.multiple = true; dirIn.setAttribute("webkitdirectory", "");
+  $("addMpc").after(add, sync, dirIn); $("addMpc").textContent = "+ MPC files";
+  $("addMpc").title = "Add MPC .progression or .mpcpattern files (pick many at once, or drop them on the page)";
+  add.onclick = async () => {
+    if (!window.showDirectoryPicker) return dirIn.click();
+    try { const h = await showDirectoryPicker({ id: "chordstage", mode: "read" }); await handleSet(h); showSyncFolder(); importFolderFiles(await filesIn(h)); } catch {}
+  };
+  dirIn.onchange = () => { importFolderFiles([...dirIn.files]); dirIn.value = ""; };
+  sync.onclick = async () => {
+    const h = await handleGet(); if (!h) return;
+    try {
+      if ((await h.queryPermission({ mode: "read" })) !== "granted" && (await h.requestPermission({ mode: "read" })) !== "granted") return;
+      importFolderFiles(await filesIn(h));
+    } catch { alert("Couldn't open that folder. It may have moved; use + Add folder again."); }
+  };
+  showSyncFolder();
+  document.querySelectorAll("#settings [data-tab]").forEach(b => b.onclick = () => openSettings(b.dataset.tab));
+  $("setBtn").onclick = () => openSettings("look");
+  $("editList").onclick = () => openSettings("setlist");
+  $("setClose").onclick = closeSettings; document.querySelector(".setshade").onclick = closeSettings;
+  document.querySelectorAll(".themes [data-theme]").forEach(b => b.onclick = () => { S.theme = b.dataset.theme; save(); applyLook(); });
+  $("skinPick").onclick = () => $("skinFile").click();
+  $("skinFile").onchange = e => { setSkin(e.target.files[0]); e.target.value = ""; };
+  $("skinRemove").onclick = () => { skinData = null; try { localStorage.removeItem("chordstage-skin"); } catch {} applyLook(); };
+  $("skinDim").oninput = e => { S.skinDim = +e.target.value; save(); applyLook(); };
+  $("skinGlass").oninput = e => { S.skinGlass = +e.target.value; save(); applyLook(); };
+  $("skinFit").onchange = e => { S.skinFit = e.target.value; save(); applyLook(); };
+  const drop = $("skinDrop");
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); e.stopPropagation(); drop.classList.remove("over"); setSkin(e.dataTransfer.files[0]); });
+  applyLook();
+}
 async function importProgressions(files) {
   const added = [], failed = []; let updated = 0;
   for (const f of files) {
     try {
-      const song = progressionSong(JSON.parse(await f.text()), f.name);
+      const json = JSON.parse(await f.text());
+      const song = json && json.pattern ? patternSong(json, f.name) : progressionSong(json, f.name);
       // Already imported: refresh its chart and key, keep its other settings
       const old = S.setlist.find(s => s.name === song.name && /@\d/.test(s.prog || ""));
       if (old) { Object.assign(old, { key: song.key, scale: song.scale, sevenths: song.sevenths, prog: song.prog }); updated++; }
@@ -2164,7 +2419,7 @@ async function importProgressions(files) {
   const plural = n => n + " song" + (n > 1 ? "s" : "");
   alert([added.length && `Added ${plural(added.length)} to the end of your set list.`, updated && `Updated ${plural(updated)} already in your set list.`]
     .filter(Boolean).join(" ") +
-    (failed.length ? `\n\nCouldn't read: ${failed.join(", ")}` : ""));
+    (failed.length ? `\n\nCouldn't use: ${failed.join(", ")} (not a .progression, or a pattern with no chords in it, like drums or a single-note melody)` : ""));
 }
 const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const summary = s => `${KEYS[s.key]} ${SCALES[s.scale] ? SCALES[s.scale].name : s.scale}${s.sevenths ? " · 7ths" : ""}`;
@@ -2192,6 +2447,7 @@ function load(def) { try { return { ...def, ...JSON.parse(localStorage.getItem("
 function save() { try { localStorage.setItem("chordstage", JSON.stringify(S)); } catch {} renderSet(); }
 
 setup();
+initSettings();
 </script>
 <script>
 // Installable app + offline use (only works from a web address, not when opened as a file)

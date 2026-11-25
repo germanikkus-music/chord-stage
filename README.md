@@ -54,6 +54,26 @@ The **MPK buttons & bank-B pads** row under the knob boxes shows the mapping. Ta
 
 The PopuPiano's six bars on the left play **bass notes in the song's key**: bar 1 is the key's root, bar 2 the 2nd note of the scale, and so on up to bar 6, climbing like a scale (in C major: C D E F G A; in A minor: A B C D E F). They always play a real bass: **Deep bass** (a round, heavy synth bass that still comes through on small speakers), or **Bass guitar** if that's picked under **Bass keys**; the Bass keys style (single, octaves or root + 5th) applies too. They work whether or not a bass zone is set on the keyboard, and the Bass keys sound and style menus show whenever a PopuPiano is connected. For the deepest sound use **Single** notes: **Octaves** adds the note an octave up, which makes the bass sound higher. The bars send C–A on MIDI channel 2; Chord Stage recognises them by the PopuPiano's name.
 
+## ⚙ Settings, themes and skins
+
+The front page keeps what you use while playing: key, scale, sound, the key modes, Strum, Arp, Smooth voicing, the song bar, Beat, Rec / Loop, the progression and song form, the chord tiles and the keyboard. Everything you set once is under **⚙ Settings** (top right; **Edit set list** opens it too):
+
+- **Look:** three themes, **Neon Stage** (dark and glowing, the original), **Warm Studio** (walnut, cream and amber) and **Daylight** (light, high contrast). A **skin image**: choose or drop a JPG or PNG and it fills the background, with the panels turning to frosted glass. **Darken image**, **Panel glass** and **Fit** (fill, fit whole image, tile) adjust it. The image is shrunk to at most 1920 px and kept on this device only. The big chord, Up next, the chord tiles and the keyboard keep their own colors over any image.
+- **Set list:** the song list, **+ MPC files**, **+ Add folder**, **↻ Update from folder**, Export backup and Import.
+- **Keys setup:** Bass keys, Split at, 7th chords, Low root under chords.
+- **Sound & MIDI out:** Send MIDI to, Built-in sound, Drums level, Fills every 4 bars, Drums to MPC.
+- **Controllers:** the MPK buttons and bank-B pads mapping.
+
+Esc closes Settings (and still stops every note).
+
+## Adding a folder of progressions
+
+**+ Add folder** adds every `.progression` and `.mpcpattern` file in a folder and its subfolders (up to three levels down). Songs already in the set list are refreshed, not duplicated. In Chrome on a computer the folder is remembered: **↻ Update from <folder>** adds anything new you've saved there (Chrome asks once per session to allow reading the folder). Chrome on Android can't remember folders; there, **+ MPC files** lets you select all the files in a folder at once.
+
+## MPC patterns (.mpcpattern)
+
+A `.mpcpattern` holds the notes as played, not chord names, so Chord Stage works the chords out: it looks at each half bar, finds the chord that best fits the notes sounding (triads, 7ths, 9ths, sus, add9, slash chords with the lowest note as the bass), keeps the pattern's own voicing, merges repeats, and guesses the key from all the notes. The result is a normal song with **Sloppy mode** on. Patterns without chords (drums, chopped samples, single-note melodies) are skipped with a note. Drop `.mpcpattern` files on the page, use **+ MPC files**, or put them in a folder with **+ Add folder**.
+
 ## Stage view
 
 On a phone, Chord Stage switches to **Stage view** by itself: the song, the big chord with Up next, the progression and song form, the chord tiles, Beat, Rec / Loop and STOP ALL, in that order, with the settings hidden. On a tablet or computer, press **▣ Stage view** next to the Piano/Horn button. **⚙ All controls** brings everything back.
