@@ -298,7 +298,7 @@
   <div class="ctl piano-only"><label>Upper keys</label><select id="upperMode">
     <option value="melody">Melody (in key)</option><option value="chords">Play chords</option><option value="free">Free</option><option value="lock">Chord lock (right key only)</option></select></div>
   <div class="ctl piano-only"><label>Bass keys</label><span class="pair"><button id="bassSplit">Off</button><button id="bassOff" title="Turn bass keys off">✕</button>
-    <select id="bassSound"><option value="piano">Left hand (piano)</option><option value="guitar">Bass guitar (ch 2)</option></select>
+    <select id="bassSound"><option value="piano">Left hand (piano)</option><option value="guitar">Bass guitar (ch 2)</option><option value="deep">Deep bass (ch 2)</option></select>
     <select id="bassStyle"><option value="single">Single notes</option><option value="octave">Octaves</option><option value="fifth">Root + 5th</option></select></span></div>
   <div class="ctl horn-only"><label>Horn sound</label><select id="windSound"></select></div>
   <div class="ctl horn-only"><label>Octave</label><span class="pair"><select id="windOct"><option value="-12">Octave down</option><option value="0">As played</option><option value="12">Octave up</option></select></span></div>
@@ -705,6 +705,7 @@ function synthOff(note) {
 function synthKill(note) { const v = voices.get(note); if (v) { voices.delete(note); v.stop(0.02); } }
 
 let bfOwned = null;
+const SOFT_CLIP = (() => { const c = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; c[i] = Math.tanh(1.8 * x) / Math.tanh(1.8); } return c; })();
 function makeVoice(note, vel, kind = S.sound) {
   bfOwned = null;
   const t = ctx.currentTime, f = hz(note), g = ctx.createGain(), amp = 0.25 + 0.75 * (vel / 127);
@@ -715,7 +716,16 @@ function makeVoice(note, vel, kind = S.sound) {
     const og = ctx.createGain(); og.gain.value = gain; o.connect(og); nodes.push(o); o.start(t); return { o, og };
   };
   let rel = 0.35 + mix.release * 1.2, env;
-  if (kind === "bass") {
+  if (kind === "deepbass") {
+    // Round, heavy bass: a strong fundamental, a little 2nd harmonic and soft saturation, so the low note
+    // still comes through on small speakers that can't play the fundamental itself
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 0.7; lp.frequency.value = Math.min(f * 5, 1200);
+    const sat = ctx.createWaveShaper(); sat.curve = SOFT_CLIP; sat.connect(lp); lp.connect(g);
+    osc("sine", f, 1.1).og.connect(sat);
+    osc("triangle", f, 0.35).og.connect(sat);
+    osc("sine", f * 2, 0.22).og.connect(sat);
+    env = [[0.006, 1], [1.8, 0.75]]; rel = 0.12 + mix.release * 0.5;
+  } else if (kind === "bass") {
     const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 2; lp.connect(g);
     osc("sawtooth", f, 0.45).og.connect(lp);
     osc("sine", f, 0.9).og.connect(g);
@@ -972,6 +982,7 @@ function panic() {
 // ---------- Bass keys ----------
 // Left hand: low piano notes in the main sound (channel 1, pedal holds them).
 // Bass guitar: its own sound on MIDI channel 2 so MPC can give it its own track.
+let hasBars = false;           // a PopuPiano (with its bass bars) is connected
 const bassHeld = new Map();   // bass-guitar key pressed -> notes played
 const bassVoices = new Map(); // bass-guitar note -> voice
 const isBass = n => S.bassSplit > 0 && n < S.bassSplit;
@@ -988,7 +999,7 @@ function bassDown(note, vel) {
   if (S.bassSound === "piano") { press("b" + note, notes, vel, null); checkFree(); return; }
   bassHeld.set(note, notes);
   notes.forEach(m => {
-    if (ctx && S.internal) { const old = bassVoices.get(m); if (old) old.stop(0.02); bassVoices.set(m, makeVoice(m, vel, "bass")); }
+    if (ctx && S.internal) { const old = bassVoices.get(m); if (old) old.stop(0.02); bassVoices.set(m, makeVoice(m, vel, S.bassSound === "deep" ? "deepbass" : "bass")); }
     if (midiOut) midiOut.send([0x91, m, vel]);
   });
   render();
@@ -1018,10 +1029,10 @@ function barDown(d) {
   // The bars climb like a scale from the key's root, which sits between G#1 and G2
   const root = 36 + S.key - (S.key >= 8 ? 12 : 0), n = root + SCALES[S.scale].chord[d], vel = 100;
   const notes = S.bassStyle === "octave" ? [n, n + 12] : S.bassStyle === "fifth" ? [n, snapNearest(n + 7)] : [n];
-  if (S.bassSound === "piano") { press("bar" + d, notes, vel, null); checkFree(); return; }
+  // The bars are always a real bass: Bass guitar, or Deep bass (also when the keyboard's bass keys play piano)
   bassHeld.set("bar" + d, notes);
   notes.forEach(m => {
-    if (ctx && S.internal) { const old = bassVoices.get(m); if (old) old.stop(0.02); bassVoices.set(m, makeVoice(m, vel, "bass")); }
+    if (ctx && S.internal) { const old = bassVoices.get(m); if (old) old.stop(0.02); bassVoices.set(m, makeVoice(m, vel, S.bassSound === "guitar" ? "bass" : "deepbass")); }
     if (midiOut) midiOut.send([0x91, m, vel]);
   });
   render();
@@ -1468,6 +1479,7 @@ function refreshStatus() {
   st.textContent = names.length ? names.join(" + ") + " connected" : ins.length ? ins.length + " MIDI input(s)" : "No MIDI keyboard found";
   st.className = ins.length ? "ok" : "";
   midiHelp(!ins.length);
+  hasBars = ins.some(i => /popu/i.test(i.name)); syncUI();
 }
 // No keyboard: show how to connect a Bluetooth one, the step that's easy to forget
 function midiHelp(show) {
@@ -1516,7 +1528,7 @@ function syncUI() {
   $("bassSplit").textContent = learnBass ? "Press top bass key…" : S.bassSplit ? "Up to " + noteName(S.bassSplit - 1) : "Off";
   $("bassOff").hidden = !S.bassSplit || learnBass;
   $("bassSound").value = S.bassSound; $("bassStyle").value = S.bassStyle;
-  $("bassSound").hidden = $("bassStyle").hidden = !S.bassSplit;
+  $("bassSound").hidden = $("bassStyle").hidden = !S.bassSplit && !hasBars;
   $("prog").value = S.prog;
   document.querySelector(".progbox").classList.toggle("empty", !S.prog);
   $("sloppy").checked = S.sloppy;
