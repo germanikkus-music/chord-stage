@@ -236,6 +236,8 @@
   .setbody h3 { margin: 8px 0 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
   .setbody .note { font-size: 13px; color: var(--dim); margin: 0; }
   .setbody #listPanel { margin-top: 0; }
+  .defform { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .defform label { font-size: 12px; }
   .themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .themes button { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px; border: 2px solid var(--line); background: var(--panel); text-align: left; }
   .themes button.on { border-color: var(--accent); }
@@ -525,7 +527,14 @@
         </div>
         <p class="note">The big chord, Up next, the chord tiles and the keyboard keep their own colors over any image, so a busy picture can't hide what to play.</p>
       </section>
-      <section data-sec="setlist"></section>
+      <section data-sec="setlist">
+        <div class="defform">
+          <label for="defForm">Song form for new songs</label>
+          <select id="defForm"></select>
+          <button id="formAll">Use it on every song</button>
+        </div>
+        <p class="note">New songs (MPC files, folders, charts typed in Free play) start with this form. Each song can still have its own: change Song form on the front page and save the song.</p>
+      </section>
       <section data-sec="setup"><p class="note">Where the keyboard splits and what the left hand does. These are saved with each song.</p></section>
       <section data-sec="sound"><p class="note">Where the notes go, and the drum mix.</p></section>
       <section data-sec="controllers"><p class="note">What the MPK's buttons, encoder and bank-B pads do. The PopuPiano's six left bars always play bass notes 1–6 of the key.</p></section>
@@ -583,7 +592,7 @@ const DETECT = QUALITY.concat([
 const mod = (n, m) => ((n % m) + m) % m;
 const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
-const DEFAULTS = { follow: "play", theme: "neon", skinDim: 0.35, skinGlass: 0.6, skinFit: "cover", key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
+const DEFAULTS = { defaultForm: "Main x2, Bridge, Main -2, Main", follow: "play", theme: "neon", skinDim: 0.35, skinGlass: 0.6, skinFit: "cover", key: 0, scale: "major", sound: "epiano", lowerMode: "chords", upperMode: "melody",
   split: 60, sevenths: false, bass: true, out: "", internal: true, setlist: [], song: -1, prog: "",
   bassSplit: 0, bassSound: "piano", bassStyle: "single", sloppy: false,
   windSound: "recorder", windOct: 0, windCal: 0, windChords: "silent", inst: "piano",
@@ -2356,7 +2365,7 @@ function progressionSong(json, fileName) {
   for (const f of SONG_FIELDS) if (f in cs && typeof cs[f] === typeof DEFAULTS[f]) extra[f] = cs[f];
   if (extra.beatStyle && !BEATS[extra.beatStyle]) delete extra.beatStyle;
   if (extra.sound && !SOUNDS[extra.sound]) delete extra.sound;
-  return { name, ...songOf(), key, scale, sevenths, prog, sloppy: true, ...extra }; // most MPC chords are outside the key
+  return { name, ...songOf(), key, scale, sevenths, prog, sloppy: true, form: S.defaultForm ?? "", ...extra }; // most MPC chords are outside the key
 }
 // An MPC .mpcpattern is the notes as played (960 ticks per beat). Find the chord in each half bar, name it,
 // keep its voicing, guess the key, and hand it to the .progression importer.
@@ -2487,12 +2496,24 @@ function initSettings() {
     } catch { alert("Couldn't open that folder. It may have moved; use + Add folder again."); }
   };
   showSyncFolder();
+  // Default Song form: the same choices as the front page's Song form (Custom keeps whatever text it has)
+  const df = $("defForm");
+  [...$("formPreset").options].filter(o => o.value !== "custom").forEach(o => df.add(new Option(o.text, FORMS[o.value])));
+  const showDf = () => { df.value = S.defaultForm ?? ""; if (df.selectedIndex < 0) { df.add(new Option("Custom: " + S.defaultForm, S.defaultForm)); df.value = S.defaultForm; } };
+  showDf();
+  df.onchange = () => { S.defaultForm = df.value; save(); };
+  $("formAll").onclick = () => {
+    const label = df.options[df.selectedIndex].text, n = S.setlist.length;
+    if (!n || !confirm(`Set Song form to “${label}” on all ${n} songs?`)) return;
+    S.setlist.forEach(song => song.form = df.value);
+    S.form = df.value; progPos = 0; syncUI(); save(); render(); toast(`Song form “${label}” on all ${n} songs`);
+  };
   document.querySelectorAll("#settings [data-tab]").forEach(b => b.onclick = () => openSettings(b.dataset.tab));
   $("setBtn").onclick = () => openSettings("look");
   $("editList").onclick = () => openSettings("setlist");
   // Free play: keep the key, scale and sound, drop the song and its progression (the song itself is untouched)
   $("freePlay").onclick = () => {
-    S.song = -1; S.prog = ""; S.form = ""; progPos = 0; $("prog").value = "";
+    S.song = -1; S.prog = ""; S.form = S.defaultForm ?? ""; progPos = 0; $("prog").value = "";
     document.querySelector(".progbox").classList.add("empty");
     syncUI(); save(); render(); toast("Free play: every key plays its own chord in " + KEYS[S.key] + " " + SCALES[S.scale].name);
   };

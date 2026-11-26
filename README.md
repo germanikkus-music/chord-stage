@@ -141,6 +141,8 @@ On a phone, Chord Stage switches to **Stage view** by itself: the song, the big 
 - **2×, bridge, down a step, home**.
 - **Custom…**: type your own, parts separated by commas. `Main` is the whole progression, a `[Section]` name from the progression plays just that section, and `Bridge` uses your `[Bridge]` section or writes one. `x3` repeats a part, and `+2` / `-2` moves it up or down that many half steps. Example: `Main x3, Main -2, Bridge, Main +1`.
 
+**Default for new songs:** ⚙ Settings › Set list › **Song form for new songs** (starts as **2×, bridge, down a step, home**). Songs added from MPC files or a folder, and charts typed in Free play, start with it. **Use it on every song** sets it on the whole set list in one go (it asks first). Any song can still have its own form: change Song form on the front page and save the song.
+
 The bar shows each part, with the one you're in highlighted (and which pass, like 2/3), and the chord chips show that part's chords. Moved parts keep MPC voicings, shifted. Sloppy mode, pad 8 and Chord lock all follow the moved chords. Saved with each song.
 
 ## Chords move with the beat
