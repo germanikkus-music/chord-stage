@@ -28,7 +28,7 @@ Tap **✎ Edit** in the progression box, type the chords separated by spaces, an
 |---|---|---|---|---|---|---|---|---|---|---|
 | Roman | I | ii | iii | IV | V | vi | viiø | bVII | bIII | bVI |
 
-**Chord types** read in names, numerals and Nashville: major, `m`, `dim`, `aug`, `7`, `maj7`, `m7`, `m7b5` (also `m7(b5)`, `ø`), `dim7`, `mMaj7`, `6`, `m6`, `9`, `m9`, `maj9`, `add9` (`add2`), `madd9`, `sus2`, `sus4`, `7sus4`, `11`, `m11`, `13`, `m13`, `maj13`, `13sus4` (`sus13`), `maj9#11`, `5`. Capitals are fine (`CMaj9`, `BbSus13`, `EMin11`).
+**Chord types** read in names, numerals and Nashville: major, `m`, `dim`, `aug`, `7`, `maj7`, `m7`, `m7b5` (also `m7(b5)`, `ø`), `dim7`, `mMaj7`, `6`, `m6`, `9`, `m9`, `maj9`, `add9` (`add2`), `madd9`, `sus2`, `sus4`, `7sus4`, `11`, `m11`, `13`, `m13`, `maj13`, `13sus4` (`sus13`), `maj9#11`, `5`. Capitals are fine (`CMaj9`, `BbSus13`, `EMin11`). Chart symbols work as well: `♭` `♯`, `-` for minor (`6-`, `2-11`), `Δ` for major 7 (`1Δ7`, `1Δ9`), `ø`/`ø7` half-diminished, `°`/`°7` diminished, and dashes between chords (`1 – 4 – 5`).
 
 **How many times to write a chord** depends on **Chords move** (right of Song form):
 
