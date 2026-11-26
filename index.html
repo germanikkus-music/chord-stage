@@ -572,6 +572,10 @@ const DETECT = QUALITY.concat([
   { iv:[4,7,10,14], sym:"9" }, { iv:[3,7,10,14], sym:"m9" }, { iv:[4,7,11,14], sym:"maj9" }, { iv:[4,7,14], sym:"add9" },
   { iv:[2,4,7,10], sym:"9" }, { iv:[2,3,7,10], sym:"m9" }, { iv:[2,4,7,11], sym:"maj9" }, { iv:[2,4,7], sym:"add9" },
   { iv:[4,8,10], sym:"aug7" }, { iv:[3,7,14], sym:"madd9" }, { iv:[2,3,7], sym:"madd9" },
+  // Neo soul colors: 11ths and 13ths (read from charts; the voicing spreads them out)
+  { iv:[3,7,10,14,17], sym:"m11" }, { iv:[5,7,10,14,21], sym:"13sus4" }, { iv:[5,7,10], sym:"7sus4" },
+  { iv:[4,7,10,14,21], sym:"13" }, { iv:[3,7,10,14,21], sym:"m13" }, { iv:[4,7,11,14,21], sym:"maj13" },
+  { iv:[4,7,10,14,17], sym:"11" }, { iv:[4,7,11,14,18], sym:"maj9#11" }, { iv:[3,7,10,17], sym:"m7add11" },
 ]);
 
 const mod = (n, m) => ((n % m) + m) % m;
@@ -671,7 +675,10 @@ const LETTER = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const ALIAS = { M: "", maj: "", min: "m", "-": "m", "°": "dim", o: "dim", "+": "aug", M7: "maj7", "Δ": "maj7",
   "ø": "m7b5", "-7": "m7", min7: "m7", "°7": "dim7", o7: "dim7", sus: "sus4",
   "7(9)": "9", "m7(9)": "m9", "maj7(9)": "maj9", "(9)": "add9", M9: "maj9",
-  "7#5": "aug7", "+7": "aug7", "m(add9)": "madd9", madd: "madd9", "add2": "add9" };
+  "7#5": "aug7", "+7": "aug7", "m(add9)": "madd9", madd: "madd9", "add2": "add9",
+  sus13: "13sus4", "13sus": "13sus4", "sus4(13)": "13sus4", "7sus": "7sus4", "9sus4": "13sus4",
+  "m7(b5)": "m7b5", "m7-5": "m7b5", "m11b5": "m7b5", mi11: "m11", "-11": "m11", "-9": "m9", "-13": "m13",
+  "maj7(#11)": "maj9#11", "Δ9": "maj9", "Δ13": "maj13" };
 const pcOf = s => mod(LETTER[s[0]] + (s[1] === "#" ? 1 : s[1] === "b" ? -1 : 0), 12);
 
 function numeral(rootPc, iv) {
@@ -728,11 +735,30 @@ function parseChordName(tok) {
   }
   m = tok.match(NAME_RE);
   if (m) {
-    let suf = m[3].replace(/^min(?!or)/, "m"); // MPC spells them Cmin9, Cminadd
+    let suf = m[3].replace(/^Maj/, "maj").replace(/^M(?=aj)/, "m").replace(/Sus/g, "sus").replace(/^(Min|min|mi)(?!or)/, "m").replace(/^Dim/, "dim").replace(/^Add/, "add");
     suf = suf in ALIAS ? ALIAS[suf] : m[3] in ALIAS ? ALIAS[m[3]] : suf;
     const q = suf === "" ? QUALITY[0] : DETECT.find(q => q.sym === suf);
     if (!q) return null;
     return buildChord(pcOf(m[1] + m[2]), q.iv, m[4] ? pcOf(m[4]) : null, m[1] + m[2], m[4] || "");
+  }
+  const name = degreeToName(tok);
+  return name ? parseChordName(name) : null;
+}
+// Nashville numbers (1 4 5, 6m, b7sus13, 5add2/7: counted from the key's major scale) and Roman numerals with any
+// chord type (ii11, bVIIsus13, Imaj9/iii) become chord names in the current key, so they follow the Key too
+const NASH_RE = /^([b#]?)([1-7])(?![0-9])(.*?)(?:\/([b#]?)([1-7]))?$/;
+const ROMAN_ANY = /^([b#]?)(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(.*?)(?:\/([b#]?)(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i|[1-7]))?$/;
+function degreeToName(tok) {
+  const spell = (acc, rel) => { const pc = mod(S.key + rel, 12); return acc === "b" ? FLAT[pc] : acc === "#" ? SHARP[pc] : pcName(pc); };
+  const relOf = (acc, d, scale) => acc ? MAJOR[d] + (acc === "b" ? -1 : 1) : scale ? SCALES[S.scale].chord[d] : MAJOR[d];
+  const bassOf = (acc, b) => b == null ? "" : "/" + spell(acc, relOf(acc, /\d/.test(b) ? +b - 1 : ROMAN.indexOf(b.toUpperCase()), !/\d/.test(b)));
+  let m = tok.match(NASH_RE);
+  if (m) return spell(m[1], relOf(m[1], +m[2] - 1, false)) + m[3] + bassOf(m[4], m[5]);
+  m = tok.match(ROMAN_ANY);
+  if (m && m[3] !== tok) {
+    const lower = m[2] !== m[2].toUpperCase();
+    const q = lower && !/^(m(?!aj)|min|dim|°|o|ø|-)/.test(m[3]) ? "m" + m[3] : m[3]; // ii11 = a minor 11th
+    return spell(m[1], relOf(m[1], ROMAN.indexOf(m[2].toUpperCase()), true)) + q + bassOf(m[4], m[5]);
   }
   return null;
 }

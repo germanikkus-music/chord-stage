@@ -22,13 +22,13 @@ Tap **✎ Edit** in the progression box, type the chords separated by spaces, an
 
 **Sections:** put `[Verse]`, `[Chorus]`, `[Bridge]` (any name) in front of the chords they start. The strip groups them, and Song form can use the names.
 
-**Nashville numbers** aren't read as digits yet; write them as numerals:
+**Nashville numbers** work too: `1 4 5`, `6m`, `2m7`, `b7`, counted from the Key's major scale (so in a minor key, write the tonic as `1m`). Any chord type can follow the number, and a slash takes a bass number: `b7sus13 5add2/7 1maj9`. Roman numerals take any chord type the same way (`ii11`, `bVIIsus13`, `Imaj9/iii`); a lower-case numeral is minor, so `ii11` is a minor 11th. Like Roman numerals, Nashville numbers follow the Key.
 
-| Nashville | 1 | 2 | 3 | 4 | 5 | 6 | 7 | b7 | b3 | b6 | 2m | 6m |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Chord Stage | I | II | III | IV | V | VI | vii° | bVII | bIII | bVI | ii | vi |
+| Nashville | 1 | 2m | 3m | 4 | 5 | 6m | 7ø | b7 | b3 | b6 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roman | I | ii | iii | IV | V | vi | viiø | bVII | bIII | bVI |
 
-(Lower case for minor: a Nashville `6-` or `6m` is `vi`.)
+**Chord types** read in names, numerals and Nashville: major, `m`, `dim`, `aug`, `7`, `maj7`, `m7`, `m7b5` (also `m7(b5)`, `ø`), `dim7`, `mMaj7`, `6`, `m6`, `9`, `m9`, `maj9`, `add9` (`add2`), `madd9`, `sus2`, `sus4`, `7sus4`, `11`, `m11`, `13`, `m13`, `maj13`, `13sus4` (`sus13`), `maj9#11`, `5`. Capitals are fine (`CMaj9`, `BbSus13`, `EMin11`).
 
 **How many times to write a chord** depends on **Chords move** (right of Song form):
 
