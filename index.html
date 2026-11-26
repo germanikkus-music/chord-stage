@@ -118,6 +118,8 @@
   .knobs span { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; }
   .knobs b { color: var(--text); font-weight: 600; }
   .btns { margin-top: 8px; align-items: center; }
+  #songKey { align-self: flex-start; margin: 2px 0; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel2);
+    color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
   .warnhint { color: var(--pre); font-size: 13px; }
   .usekey { margin: 4px 0; padding: 6px 10px; font-size: 13px; border-color: var(--pre); color: var(--pre); }
   #midiHelp { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--pre); border-radius: 12px; background: #2a2410; color: var(--text); font-size: 14px; line-height: 1.45; }
@@ -385,7 +387,7 @@
 
 <div class="setbar">
   <button id="prev" class="big" title="Previous song (←)">◀</button>
-  <div class="songnow"><span id="songPos"></span><b id="songName"></b><span id="songNext"></span></div>
+  <div class="songnow"><span id="songPos"></span><b id="songName"></b><span id="songKey" title="The song's key right now (it follows the Key setting)"></span><span id="songNext"></span></div>
   <button id="next" class="big" title="Next song (→)">▶</button>
   <button id="freePlay" title="Leave the set list and just play: every key plays its own chord in the key, no progression. ◀ ▶ go back to your songs.">Free play</button>
   <div class="spacer"></div>
@@ -2544,6 +2546,7 @@ function renderSet() {
   const n = S.setlist.length, song = current(), next = S.setlist[S.song + 1];
   $("songPos").textContent = song ? `Song ${S.song + 1} of ${n}` : n ? `${n} song${n > 1 ? "s" : ""} — press ▶ to start` : "No set list yet";
   $("songName").textContent = song ? song.name : "Free play";
+  $("songKey").textContent = KEYS[S.key] + " " + SCALES[S.scale].name;
   $("freePlay").hidden = !song;
   $("songNext").textContent = next ? "Next: " + next.name : song ? "Last song" : "";
   $("prev").disabled = !song || S.song === 0;
