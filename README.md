@@ -61,7 +61,8 @@ With **Sloppy mode** on, one finger on each chord's root is enough (G, E, C, D h
 - The progression display follows the loop, so the chips, Up next and the green key show where the loop is.
 - **🎵 Melody over** (M) turns the whole keyboard into a solo instrument: every key plays one note in the key, an octave higher, with no chords. Tap it again to go back. It turns itself off when you Clear or start a new recording, and Up next shows a reminder while it is on.
 - The loop plays a little softer than you (70%), and your sustain pedal only holds what you play, not the loop.
-- The loop isn't saved with the song; download the MIDI file to keep it. Bass-guitar keys and the Aerophone aren't recorded.
+- **The loop is saved with the song** it was recorded in: switch songs or reload and it's back, ready for ▶ Loop. A loop recorded to the beat stretches to the song's tempo if you change it. **✕ Clear** (or the MPK's Undo) asks before deleting a saved loop. Loops made in Free play aren't kept (there's no song to keep them in). Export backup includes the loops. Bass-guitar keys and the Aerophone aren't recorded in the loop.
+- **⏺ Record audio** records everything Chord Stage plays (chords, melody, loop, drums, reverb) until you press **■ Stop audio**, then saves a WAV file named after the song and the time. WAV drops straight into the MPC as a sample. Only Chord Stage's own sound is recorded: with Built-in sound off and the MPC making the sound, record on the MPC instead.
 
 ## MPK knobs
 
