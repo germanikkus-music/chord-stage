@@ -13,6 +13,44 @@ A live-performance chord helper for the AKAI MPK mini Plus II (works with any MI
 - Set list with per-song settings; switch with ◀ ▶, arrow keys, Page Up/Down (foot pedal) or knob 8.
 - Built-in sounds, or send MIDI to MPC 3 (via the IAC Driver) or the MPK's 5-pin MIDI out.
 
+## Typing in a chart
+
+Tap **✎ Edit** in the progression box, type the chords separated by spaces, and press Enter. Two ways to write them:
+
+- **Chord names:** `G Em C D`, `Cmaj7 Am7 Dm7 G7`, slash chords `C/E`. They stay on those notes; changing the Key asks whether to move them.
+- **Roman numerals:** `I vi IV V`, counted from the song's Key. Upper case = major, lower case = minor; add `7`, `maj7`, `9`, `°` (diminished) or `ø` (half-diminished); `b` in front for a borrowed chord (`bVII`, `bIII`, `bVI`). They follow the Key by themselves.
+
+**Sections:** put `[Verse]`, `[Chorus]`, `[Bridge]` (any name) in front of the chords they start. The strip groups them, and Song form can use the names.
+
+**Nashville numbers** aren't read as digits yet; write them as numerals:
+
+| Nashville | 1 | 2 | 3 | 4 | 5 | 6 | 7 | b7 | b3 | b6 | 2m | 6m |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Chord Stage | I | II | III | IV | V | VI | vii° | bVII | bIII | bVI | ii | vi |
+
+(Lower case for minor: a Nashville `6-` or `6m` is `vi`.)
+
+**How many times to write a chord** depends on **Chords move** (right of Song form):
+
+- **When I play them:** write each change once. `G Em C D` moves on each time you play the next chord.
+- **Every bar (with the beat):** each chord name is one bar, so write a 2-bar chord twice. `G G Em Em` is two bars of G, then two of Em. (Every 2 bars: each name is two bars.)
+
+**Repeats:** set **Song form** to **Custom…** and type the order with the section names, e.g. `Verse x2, Chorus x2` or `Verse x2, Chorus, Bridge, Chorus x2`.
+
+### Worked example
+
+A chart in G major where the verse is G (2 bars), Em (2 bars), C (2 bars), D (2 bars), played twice, and the chorus is C (1 bar), D (1 bar), G (2 bars), played twice:
+
+1. Set **Key** to G, **Scale** to Major.
+2. ✎ Edit, then either
+   - names: `[Verse] G G Em Em C C D D [Chorus] C D G G`
+   - numerals: `[Verse] I I vi vi IV IV V V [Chorus] IV V I I`
+3. **Chords move:** Every bar (with the beat). **Song form:** Custom… `Verse x2, Chorus x2`.
+4. Set the **Tempo** (or Tap it in along with the recording), tick **Start on first chord** if you like, and press **▶ Beat**.
+5. **+ Save as new song** and give it a name.
+
+With **Sloppy mode** on, one finger on each chord's root is enough (G, E, C, D here); the green key shows which one is next.
+
 ## Record & loop
 
 **⏺ Rec** (or the R key) records what Chord Stage plays: chords, arp, strum and melody. Press it again to stop, and the loop starts playing so you can solo over yourself. **▶ Loop** (L) starts and stops it, **✕ Clear** throws it away, and **⬇ MIDI file** downloads it as a .mid at the current tempo to drop into the MPC.
